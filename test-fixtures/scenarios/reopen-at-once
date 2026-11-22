@@ -4,7 +4,7 @@
 set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 adb shell am start -W -n $pkg/.MainActivity >/dev/null
-sleep 2
+home_open
 tap $NEW_TILE
 page_open
 # Home lays out its tiles once the queued save is written; a second is enough for that, and far

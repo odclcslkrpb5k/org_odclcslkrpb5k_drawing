@@ -1,8 +1,6 @@
 package org.odclcslkrpb5k.drawing
 
 import android.content.Context
-import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
 import android.view.View
 import android.widget.GridLayout
 import android.widget.ImageButton
@@ -12,24 +10,19 @@ import org.odclcslkrpb5k.drawing.core.Stamp
 /**
  * The stamps button and its tray of faces. The button opens and closes the tray; a face chosen in
  * the tray is handed to [arm] and the tray closes; while a face is chosen, the button shows it,
- * filled and ringed, and tapping the button puts the face back. Any other tool closes the tray.
+ * filled and ringed, and tapping the button puts the face back. Any other tool closes the tray;
+ * [onOpen] closes any other tray first.
  */
-class StampTray(private val context: Context, private val arm: (Stamp?) -> Unit) {
+class StampTray(
+    private val context: Context,
+    private val onOpen: () -> Unit,
+    private val arm: (Stamp?) -> Unit,
+) {
     private var armed: Stamp? = null
 
     /** The faces, two by four; touches in its gaps never fall through to the page. */
     val tray: View by lazy {
-        GridLayout(context).apply {
-            columnCount = 2
-            visibility = View.GONE
-            isClickable = true
-            setPadding(context.dp(PAD), context.dp(PAD), context.dp(PAD), context.dp(PAD))
-            background =
-                GradientDrawable().apply {
-                    cornerRadius = context.dp(PAD * 2).toFloat()
-                    setColor(Color.WHITE)
-                    setStroke(context.dp(2), EDGE)
-                }
+        context.trayPanel(columns = 2).apply {
             for ((face, icon) in STAMP_DRAWABLES) {
                 val button =
                     ImageButton(context).apply {
@@ -60,7 +53,10 @@ class StampTray(private val context: Context, private val arm: (Stamp?) -> Unit)
                     // A chosen face is put back: the button is how a child changes their mind.
                     armed != null -> arm(null).also { close() }
                     tray.isShown -> close()
-                    else -> tray.visibility = View.VISIBLE
+                    else -> {
+                        onOpen()
+                        tray.visibility = View.VISIBLE
+                    }
                 }
             }
             .apply {
@@ -82,6 +78,5 @@ class StampTray(private val context: Context, private val arm: (Stamp?) -> Unit)
     private companion object {
         const val PAD = 12
         const val FACE = 112
-        const val EDGE = 0xFFBDBDBD.toInt()
     }
 }

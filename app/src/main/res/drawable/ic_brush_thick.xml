@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A thick brush: a line of that width, ending in a dot. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path android:fillColor="#00000000" android:strokeColor="#FF5B3FA8" android:strokeWidth="14"
+        android:strokeLineCap="round"
+        android:pathData="M10,36 Q18,10 26,24 T38,12" />
+</vector>

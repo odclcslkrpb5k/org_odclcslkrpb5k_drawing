@@ -11,9 +11,9 @@ set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 PURPLE="122 75 224" # the default color, 0xFF7A4BE0
 adb shell am start -W -n $pkg/.MainActivity >/dev/null
-sleep 2
+home_open
 tap $COLORING_TILE
-sleep 2
+picker_open
 capture coloring-picker
 tap $FIRST_COLORING
 page_open
@@ -35,7 +35,7 @@ inked 888 265 && { echo "scenario: the paper around the picture was filled too";
 inked 888 180 && { echo "scenario: a drag with the fill tool drew a stroke"; failed=1; }
 # The gallery tile is made from the page as the fill left it: the body near tile (1138, 187).
 adb shell "input tap $HOME_BUTTON"
-sleep 2
+home_open
 capture coloring-home
 colored 1138 187 $PURPLE || { echo "scenario: the gallery tile does not show the fill"; failed=1; }
 tap $SAVED_TILE

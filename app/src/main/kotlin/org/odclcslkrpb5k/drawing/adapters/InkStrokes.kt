@@ -28,6 +28,9 @@ object InkStrokes {
                 BrushKind.PEN -> StockBrushes.pressurePen()
                 BrushKind.MARKER -> StockBrushes.marker()
                 BrushKind.HIGHLIGHTER -> StockBrushes.highlighter()
+                // Drawn as a marker in the eraser's color while the finger is down; once
+                // finished it is drawn as a cut-out (FinishedStrokesView).
+                BrushKind.ERASER -> StockBrushes.marker()
             },
             spec.color.value,
             spec.size,

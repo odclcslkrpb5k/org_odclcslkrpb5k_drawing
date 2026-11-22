@@ -4,7 +4,7 @@
 set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 adb shell am start -W -n $pkg/.MainActivity >/dev/null
-sleep 2
+home_open
 tap $NEW_TILE
 page_open
 adb shell "$(stroke 400 300 1500 400); $(stroke 400 700 1500 800); $(stroke 900 200 1000 1000)"

@@ -4,14 +4,14 @@
 set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 adb shell am start -W -n $pkg/.MainActivity >/dev/null
-sleep 2
+home_open
 tap $NEW_TILE
 page_open
 adb shell "$(stroke 500 500 1300 600)"
 sleep 2
 adb shell am force-stop $pkg
 adb shell am start -W -n $pkg/.MainActivity >/dev/null
-sleep 3
+home_open
 capture home
 inked_column 1141 60 280 || { echo "scenario: no thumbnail for the drawing on the home screen"; exit 1; }
 tap $SAVED_TILE

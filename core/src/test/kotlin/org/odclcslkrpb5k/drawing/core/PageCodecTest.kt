@@ -115,11 +115,37 @@ class PageCodecTest :
 
         "a page saved by version 2, strokes and stamps, still opens" {
             checkAll(arbHistory()) { page ->
-                if (page.template == null) {
+                if (
+                    page.template == null && page.strokes.none { it.brush.kind == BrushKind.ERASER }
+                ) {
                     PageCodec.decode(asOlderVersion(PageCodec.encode(page), 2)) shouldBe
                         Outcome.Ok(page)
                 }
             }
+        }
+
+        "brushes and stamps keep the numbers pages are saved with" {
+            BrushKind.entries.associate { it.name to it.ordinal } shouldBe
+                mapOf("PEN" to 0, "MARKER" to 1, "HIGHLIGHTER" to 2, "ERASER" to 3)
+            Stamp.entries.associate { it.name to it.ordinal } shouldBe
+                mapOf(
+                    "HAPPY" to 0,
+                    "SAD" to 1,
+                    "ANGRY" to 2,
+                    "SURPRISED" to 3,
+                    "SILLY" to 4,
+                    "LOVE" to 5,
+                    "SLEEPY" to 6,
+                    "SCARED" to 7,
+                )
+        }
+
+        "an eraser stroke in a version 3 page is refused, since version 3 had none" {
+            val p = InputPoint(1f, 1f, 0L, -1f)
+            val eraser = StrokeData(BrushSpec(BrushKind.ERASER, Argb(0), 48f), listOf(p))
+            val bytes = PageCodec.encode(History(listOf(Op.AddStroke(eraser))))
+            bytes[4] = 3
+            PageCodec.decode(bytes) shouldBe Outcome.Err(DecodeError.OUT_OF_RANGE)
         }
 
         "a fill on a page with no coloring page is refused" {

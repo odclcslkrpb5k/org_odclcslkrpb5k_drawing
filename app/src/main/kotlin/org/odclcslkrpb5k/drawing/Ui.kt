@@ -5,8 +5,10 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.util.TypedValue
+import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
+import android.widget.GridLayout
 import android.widget.ImageButton
 
 /** Every touch target is at least this big: a six-year-old's finger, not a stylus. */
@@ -63,3 +65,24 @@ fun Context.swatchShape(color: Int, selected: Boolean) =
 
 private const val SWATCH_SELECTED_RING = 5
 private const val SWATCH_EDGE = 0xFFBDBDBD.toInt()
+
+/**
+ * A tool tray: a rounded white grid, hidden until its button opens it. It takes every touch in it,
+ * so a finger in its gaps never draws on the page underneath.
+ */
+fun Context.trayPanel(columns: Int): GridLayout =
+    GridLayout(this).apply {
+        columnCount = columns
+        visibility = View.GONE
+        isClickable = true
+        setPadding(dp(TRAY_PAD), dp(TRAY_PAD), dp(TRAY_PAD), dp(TRAY_PAD))
+        background =
+            GradientDrawable().apply {
+                cornerRadius = dp(TRAY_PAD * 2).toFloat()
+                setColor(Color.WHITE)
+                setStroke(dp(2), TRAY_EDGE)
+            }
+    }
+
+private const val TRAY_PAD = 12
+private const val TRAY_EDGE = 0xFFBDBDBD.toInt()

@@ -12,7 +12,6 @@ import androidx.core.graphics.createBitmap
 import androidx.ink.authoring.InProgressStrokesView
 import org.odclcslkrpb5k.drawing.adapters.Coloring
 import org.odclcslkrpb5k.drawing.core.Argb
-import org.odclcslkrpb5k.drawing.core.BrushKind
 import org.odclcslkrpb5k.drawing.core.BrushSpec
 import org.odclcslkrpb5k.drawing.core.History
 import org.odclcslkrpb5k.drawing.core.Op
@@ -20,8 +19,6 @@ import org.odclcslkrpb5k.drawing.core.Page
 import org.odclcslkrpb5k.drawing.core.Stamp
 import org.odclcslkrpb5k.drawing.core.StrokeData
 import org.odclcslkrpb5k.drawing.core.isSaveable
-
-private const val BRUSH_SIZE = 18f
 
 /**
  * The page, bottom to top: a coloring page's fills, the finished strokes, its line art (so the
@@ -69,6 +66,9 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
 
     /** Called when a finger first lands on the page (the screen closes any open tray). */
     var onTouched: () -> Unit = {}
+
+    /** What the next stroke is drawn with. */
+    var tool: Tool = Tool.MEDIUM
 
     /** The color the next stroke is drawn in; choosing one lets a selected stamp go. */
     var color: Argb = Argb(DEFAULT_COLOR)
@@ -219,7 +219,7 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 requestUnbufferedDispatch(event)
-                strokes.start(event, BrushSpec(BrushKind.PEN, color, BRUSH_SIZE))
+                strokes.start(event, BrushSpec(tool.kind, inkFor(tool, color), tool.size))
             }
             MotionEvent.ACTION_MOVE -> strokes.move(event)
             MotionEvent.ACTION_POINTER_UP ->
@@ -244,3 +244,21 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
         const val DEFAULT_COLOR = 0xFF7A4BE0.toInt()
     }
 }
+
+/**
+ * The color a stroke is drawn in. The highlighter is see-through, whatever the swatch. The eraser
+ * shows a faint grey trail while the finger is down (solid white would seem to wipe fills, lines
+ * and stamps it leaves alone); finished, it is a cut-out and its color is never drawn.
+ */
+private fun inkFor(tool: Tool, color: Argb): Argb =
+    when (tool) {
+        Tool.ERASER -> Argb(ERASER_TRAIL)
+        Tool.HIGHLIGHTER -> Argb((color.value and RGB) or HIGHLIGHT_ALPHA)
+        Tool.THIN,
+        Tool.MEDIUM,
+        Tool.THICK -> color
+    }
+
+private const val ERASER_TRAIL = 0x55888888
+private const val RGB = 0x00FFFFFF
+private const val HIGHLIGHT_ALPHA = 0x66000000

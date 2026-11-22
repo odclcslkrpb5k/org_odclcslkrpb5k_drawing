@@ -5,7 +5,7 @@
 set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 adb shell am start -W -n $pkg/.MainActivity >/dev/null
-sleep 2
+home_open
 tap $NEW_TILE
 page_open
 tap $STAMPS_BUTTON
@@ -40,7 +40,7 @@ capture stamp-slid
 inked 600 750 || { echo "scenario: a face placed and slid in one touch did not follow"; failed=1; }
 inked 600 350 && { echo "scenario: a face placed and slid in one touch stayed where it landed"; failed=1; }
 adb shell "input tap $HOME_BUTTON"
-sleep 2
+home_open
 capture stamp-home
 # The gallery tile shows the moved happy face: page (1352,899) in the tile's thumbnail.
 inked_column 1235 220 232 || { echo "scenario: the gallery tile does not show the stamp"; failed=1; }

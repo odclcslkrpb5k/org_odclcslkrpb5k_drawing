@@ -11,6 +11,14 @@ stroke() {
   printf '%s; input motionevent UP %s %s' "$cmd" "$3" "$4"
 }
 
+# Any input makes the last capture stale; pixel checks then refuse to read it until the next
+# capture (a check after redo once read the screenshot taken before it, and could not fail).
+stale=0
+adb() {
+  case "$*" in *input*) stale=1 ;; esac
+  command adb "$@"
+}
+
 tap() { adb shell input tap "$1" "$2"; }
 
 # Captures the screen as raw RGBA into $OUT_DIR/$1.raw, and as $1.png to look at.
@@ -18,14 +26,21 @@ capture() {
   adb exec-out screencap -p >"$OUT_DIR/$1.png"
   adb exec-out screencap >"$OUT_DIR/$1.raw"
   raw=$OUT_DIR/$1.raw
+  stale=0
   header=$(($(stat -c %s "$raw") - width * height * 4))
   [ "$header" -ge 12 ] && [ "$header" -le 16 ] || { echo "scenario: unexpected capture size"; exit 1; }
 }
 
-pixel() { dd if="$raw" bs=1 skip=$((header + ($2 * width + $1) * 4)) count=3 status=none | od -An -tu1; }
+# Stops the scenario when the screen has had input since the last capture. Called by every check
+# (not by pixel, which runs in a subshell where exit would not stop the scenario).
+fresh() { [ "$stale" -eq 0 ] || { echo "scenario: a pixel check after input, before a new capture"; exit 1; }; }
+
+pixel() {
+  dd if="$raw" bs=1 skip=$((header + ($2 * width + $1) * 4)) count=3 status=none | od -An -tu1
+}
 
 # True when the pixel at (x,y) is not near-white paper.
-inked() { local r g b; read -r r g b <<<"$(pixel "$1" "$2")"; [ "$r" -lt 200 ] || [ "$g" -lt 200 ] || [ "$b" -lt 200 ]; }
+inked() { fresh; local r g b; read -r r g b <<<"$(pixel "$1" "$2")"; [ "$r" -lt 200 ] || [ "$g" -lt 200 ] || [ "$b" -lt 200 ]; }
 
 # Fails the scenario on a crash (Java or native), an ANR, a StrictMode violation in the app's
 # process, Ink refusing input, or any failure the app logs; each failing check prints what it found.
@@ -77,6 +92,13 @@ COLORING_TILE="702 167"
 SAVED_TILE="1158 167"
 FIRST_COLORING="702 167"
 FILL_BUTTON="84 594"
+# The brush button, under home, and its tray's slots in one row beside it.
+BRUSH_BUTTON="84 270"
+THICK_BRUSH="606 270"
+HIGHLIGHTER="774 270"
+ERASER="942 270"
+RED_SWATCH="1850 64"
+YELLOW_SWATCH="1850 260"
 HOME_BUTTON="84 102"
 # The drawing screen's left rail, top to bottom after a spacer: stamps, undo, redo; and the stamp
 # tray's first face (happy), beside the rail.
@@ -89,22 +111,34 @@ SAD_FACE="438 348"
 # A one-finger drag from (x1,y1) to (x2,y2), as one adb shell command.
 drag() { stroke "$@"; }
 
-# Waits, up to 20 s, until a page is open: its color rail is shown (the top swatch is red), which
-# happens only once the page is read and the screen takes touches. A fixed sleep was too short on
-# a loaded machine and the first stroke landed before the page took input.
-page_open() {
-  local i
+# Waits, up to 20 s, until a check on a fresh capture passes: what = what is awaited, then the check.
+# Screens fill in from the disk thread after they first draw, so a fixed sleep is too short on a
+# loaded machine (load 18 on 8 cores dropped a first stroke, and a first tap hit an empty home).
+wait_for() {
+  local what=$1 i
+  shift
   for i in $(seq 1 40); do
     capture waiting
-    colored 1850 64 229 57 53 && return 0
+    "$@" && return 0
     sleep 0.5
   done
-  echo "scenario: no page opened within 20 s"
+  echo "scenario: $what did not appear within 20 s"
   exit 1
 }
 
+# Home, its tiles laid out: the "new page" tile's purple plus.
+home_open() { wait_for "home" colored 246 167 91 63 168; }
+
+# A page, open and taking touches: its color rail's top (red) swatch.
+page_open() { wait_for "a page" colored 1850 64 229 57 53; }
+
+# The coloring pages, previews loaded (the tiles appear only then): its second row of tiles, which
+# home, with at most two saved pages here, does not have.
+picker_open() { wait_for "the coloring pages" colored 246 466 255 255 255; }
+
 # True when the pixel at (x, y) is within 16 of the color r g b in every channel.
 colored() {
+  fresh
   local r g b
   read -r r g b <<<"$(pixel "$1" "$2")"
   [ $((r > $3 ? r - $3 : $3 - r)) -le 16 ] && [ $((g > $4 ? g - $4 : $4 - g)) -le 16 ] &&

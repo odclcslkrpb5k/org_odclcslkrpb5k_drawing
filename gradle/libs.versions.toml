@@ -17,6 +17,7 @@ ink-authoring = { module = "androidx.ink:ink-authoring", version.ref = "ink" }
 ink-brush = { module = "androidx.ink:ink-brush", version.ref = "ink" }
 ink-strokes = { module = "androidx.ink:ink-strokes", version.ref = "ink" }
 ink-rendering = { module = "androidx.ink:ink-rendering", version.ref = "ink" }
+ink-geometry = { module = "androidx.ink:ink-geometry", version.ref = "ink" }
 kotest-runner = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
 ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
 kotest-property = { module = "io.kotest:kotest-property", version.ref = "kotest" }

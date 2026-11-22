@@ -23,15 +23,17 @@ enum class DecodeError {
  *     stamp:  kind u8 = 2 | face u8 | x f32 | y f32 | size f32            (version 2 on)
  *     fill:   kind u8 = 3 | region u32 | color i32                         (version 3 on)
  *
- * The writer writes [VERSION]; the reader also accepts versions 1 (strokes only) and 2 (no
- * template, no fills), whose layouts are this one without those parts (SV-24). A fill is read only
- * on a page with a template; whether its region exists is the app's to check against the page.
- * Every stroke and stamp read must be saveable (Ink refuses a stroke whose time runs backwards).
- * The reader checks every length against what remains before reading, so a damaged file is an error
+ * The writer writes [VERSION]; the reader also accepts versions 1 (strokes only), 2 (no template,
+ * no fills) and 3 (no eraser strokes), whose layouts are this one without those parts (SV-24).
+ * Version 4 changed no layout: it marks pages an older app must refuse by version rather than by an
+ * unknown brush, which it would take for damage and skip to an older save. A fill is read only on a
+ * page with a template; whether its region exists is the app's to check against the page. Every
+ * stroke and stamp read must be saveable (Ink refuses a stroke whose time runs backwards). The
+ * reader checks every length against what remains before reading, so a damaged file is an error
  * value, never an exception or an oversized allocation.
  */
 object PageCodec {
-    const val VERSION: Int = 3
+    const val VERSION: Int = 4
     private const val OLDEST_READABLE = 1
     private const val MAGIC = 0x5752444F // "ODRW" read little-endian
     private const val OP_STROKE = 1
@@ -39,6 +41,7 @@ object PageCodec {
     private const val OP_FILL = 3
     private const val OP_STAMP_SINCE = 2
     private const val TEMPLATE_SINCE = 3
+    private const val ERASER_SINCE = 4
     private const val MAGIC_AND_VERSION_BYTES = 4 + 2
     private const val COUNT_BYTES = 4
     private const val STROKE_HEADER_BYTES = 1 + 4 + 4 + 4
@@ -169,7 +172,7 @@ object PageCodec {
     private fun op(r: Reader, header: Header): Outcome<Op, DecodeError> {
         if (r.remaining() < 1) return Outcome.Err(DecodeError.TRUNCATED)
         return when (r.byte() and U8) {
-            OP_STROKE -> stroke(r)
+            OP_STROKE -> stroke(r, header.version)
             OP_STAMP ->
                 if (header.version >= OP_STAMP_SINCE) stamp(r)
                 else Outcome.Err(DecodeError.OUT_OF_RANGE)
@@ -187,13 +190,14 @@ object PageCodec {
         return Outcome.Ok(Op.Fill(region, color))
     }
 
-    private fun stroke(r: Reader): Outcome<Op, DecodeError> {
+    private fun stroke(r: Reader, version: Int): Outcome<Op, DecodeError> {
         if (r.remaining() < STROKE_HEADER_BYTES) return Outcome.Err(DecodeError.TRUNCATED)
         val kind = BrushKind.entries.getOrNull(r.byte() and U8)
         val color = Argb(r.int())
         val size = r.float()
         val n = r.int()
-        if (kind == null || n !in 0..MAX_STROKE_POINTS) return Outcome.Err(DecodeError.OUT_OF_RANGE)
+        val known = kind != null && (kind != BrushKind.ERASER || version >= ERASER_SINCE)
+        if (!known || n !in 0..MAX_STROKE_POINTS) return Outcome.Err(DecodeError.OUT_OF_RANGE)
         if (r.remaining() / POINT_BYTES < n) return Outcome.Err(DecodeError.TRUNCATED)
         val points =
             List(n) {

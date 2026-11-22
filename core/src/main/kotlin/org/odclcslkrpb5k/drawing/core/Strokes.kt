@@ -3,11 +3,16 @@ package org.odclcslkrpb5k.drawing.core
 /** A color as 0xAARRGGBB. */
 @JvmInline value class Argb(val value: Int)
 
-/** The brushes a stroke can be drawn with. */
+/**
+ * The brushes a stroke can be drawn with. Saved by position, so a new kind goes at the end and none
+ * is ever removed or reordered.
+ */
 enum class BrushKind {
     PEN,
     MARKER,
     HIGHLIGHTER,
+    /** Takes away the strokes under it, drawn before it; fills, line art and stamps stay. */
+    ERASER,
 }
 
 /** How a stroke is drawn: brush, color and size in page units. */

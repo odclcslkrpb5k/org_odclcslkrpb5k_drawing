@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The eraser: a tilted pink block with a white end. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path android:fillColor="#FFFF80AB" android:strokeColor="#FF5B3FA8" android:strokeWidth="2.5"
+        android:strokeLineJoin="round"
+        android:pathData="M18,40 L6,28 L26,8 L42,24 L26,40 Z" />
+    <path android:fillColor="#FFFFFFFF" android:strokeColor="#FF5B3FA8" android:strokeWidth="2.5"
+        android:strokeLineJoin="round"
+        android:pathData="M18,40 L6,28 L14,20 L30,36 L26,40 Z" />
+</vector>

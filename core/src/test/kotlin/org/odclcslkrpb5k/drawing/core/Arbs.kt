@@ -38,8 +38,11 @@ fun arbPoints(): Arb<List<InputPoint>> =
             points.mapIndexed { i, p -> p.copy(elapsedMillis = times[i]) }
         }
 
-fun arbStroke(): Arb<StrokeData> =
-    Arb.bind(Arb.enum<BrushKind>(), Arb.int(), finite(0.5f, 200f), arbPoints()) { k, c, s, pts ->
+/** The brushes a page of format 3 or older could hold: all but the eraser. */
+val OLDER_BRUSHES: List<BrushKind> = BrushKind.entries - BrushKind.ERASER
+
+fun arbStroke(kinds: List<BrushKind> = BrushKind.entries): Arb<StrokeData> =
+    Arb.bind(Arb.element(kinds), Arb.int(), finite(0.5f, 200f), arbPoints()) { k, c, s, pts ->
         StrokeData(BrushSpec(k, Argb(c), s), pts)
     }
 
@@ -78,6 +81,6 @@ fun arbHistory(): Arb<History> =
 
 /** A page of strokes only, as version 1 could hold. */
 fun arbStrokesOnly(): Arb<History> =
-    Arb.list(arbStroke(), 0..MAX_STROKES).map { strokes ->
+    Arb.list(arbStroke(OLDER_BRUSHES), 0..MAX_STROKES).map { strokes ->
         History(strokes.map { Op.AddStroke(it) })
     }

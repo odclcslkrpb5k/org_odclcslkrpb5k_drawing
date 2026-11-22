@@ -66,6 +66,7 @@ dependencies {
     implementation(libs.ink.brush)
     implementation(libs.ink.strokes)
     implementation(libs.ink.rendering)
+    implementation(libs.ink.geometry)
 }
 
 // The coloring pages: templates/*.svg rendered, labelled and checked by tools/templates at build

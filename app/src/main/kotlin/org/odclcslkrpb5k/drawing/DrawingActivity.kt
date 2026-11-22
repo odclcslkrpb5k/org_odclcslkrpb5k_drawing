@@ -53,15 +53,33 @@ class DrawingActivity : Activity() {
     }
     private var opened: PageId? = null
     private val swatches = mutableListOf<View>()
-    private val stamps by lazy {
-        StampTray(this) { face ->
+    private val stamps: StampTray by lazy {
+        StampTray(this, onOpen = { brushes.close() }) { face ->
             if (face != null) setFilling(false)
             surface.arm(face)
+        }
+    }
+    private val closeTrays: () -> Unit = {
+        stamps.close()
+        brushes.close()
+    }
+
+    /** The pen to go back to when a color is chosen while erasing. */
+    private var lastPen = Tool.MEDIUM
+    private val brushes: BrushTray by lazy {
+        BrushTray(this, onOpen = { stamps.close() }) { tool ->
+            stamps.close()
+            setFilling(false)
+            surface.arm(null)
+            surface.tool = tool
+            if (tool != Tool.ERASER) lastPen = tool
+            brushes.show(tool)
         }
     }
     private val bucket by lazy {
         iconButton(R.drawable.ic_fill, "fill") {
             stamps.close()
+            brushes.close()
             surface.arm(null)
             setFilling(!surface.filling)
         }
@@ -165,18 +183,28 @@ class DrawingActivity : Activity() {
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(dp(PAD), dp(PAD), dp(PAD), dp(PAD))
             addView(
-                iconButton(R.drawable.ic_home, "home") { stamps.close().also { leave() } },
+                iconButton(R.drawable.ic_home, "home") {
+                    closeTrays()
+                    leave()
+                },
                 square(),
             )
+            addView(brushes.button, square())
             addView(View(context), LinearLayout.LayoutParams(1, 0, 1f))
             if (coloring) addView(bucket, square())
             addView(stamps.button, square())
             addView(
-                iconButton(R.drawable.ic_undo, "undo") { stamps.close().also { surface.undo() } },
+                iconButton(R.drawable.ic_undo, "undo") {
+                    closeTrays()
+                    surface.undo()
+                },
                 square(),
             )
             addView(
-                iconButton(R.drawable.ic_redo, "redo") { stamps.close().also { surface.redo() } },
+                iconButton(R.drawable.ic_redo, "redo") {
+                    closeTrays()
+                    surface.redo()
+                },
                 square(),
             )
         }
@@ -199,7 +227,7 @@ class DrawingActivity : Activity() {
     private fun layout(coloring: Boolean): View {
         val tools = toolsRail(coloring)
         surface.onArmed = { face -> stamps.showArmed(face) }
-        surface.onTouched = { stamps.close() }
+        surface.onTouched = closeTrays
         val colors = colorsRail()
         pick(swatches[SWATCHES.indexOf(DEFAULT)], Argb(DEFAULT.toInt()))
         val row =
@@ -218,6 +246,13 @@ class DrawingActivity : Activity() {
         return FrameLayout(this).apply {
             addView(row)
             addView(
+                brushes.tray,
+                FrameLayout.LayoutParams(WRAP, WRAP, Gravity.START or Gravity.TOP).apply {
+                    marginStart = dp(TARGET_DP + 2 * PAD)
+                    topMargin = dp(TARGET_DP + 2 * PAD)
+                },
+            )
+            addView(
                 stamps.tray,
                 FrameLayout.LayoutParams(WRAP, WRAP, Gravity.START or Gravity.CENTER_VERTICAL)
                     .apply {
@@ -233,8 +268,13 @@ class DrawingActivity : Activity() {
         }
 
     private fun pick(swatch: View, color: Argb) {
-        stamps.close()
+        closeTrays()
         surface.color = color
+        // A color chosen while erasing means drawing again, with the last pen used.
+        if (surface.tool == Tool.ERASER) {
+            surface.tool = lastPen
+            brushes.show(lastPen)
+        }
         swatches.forEachIndexed { i, v ->
             v.background = swatchShape(SWATCHES[i].toInt(), v === swatch)
         }

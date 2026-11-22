@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# Brushes: the eraser takes away the stroke where it passes and nothing else of it; undo brings the
+# erased part back and redo takes it again; the thick pen is wider than the medium one; the
+# highlighter is see-through; choosing a color while erasing draws again, in that color. On a
+# coloring page the eraser takes strokes only: the fill and the line art under it stay, also after
+# reopening.
+set -euo pipefail
+. "$(dirname "$0")/lib.sh"
+adb shell am start -W -n $pkg/.MainActivity >/dev/null
+home_open
+tap $NEW_TILE
+page_open
+failed=0
+# A medium stroke (18 page px, about 15 screen px) along y = 400.
+adb shell "$(stroke 400 400 1500 400)"
+sleep 1
+tap $BRUSH_BUTTON
+sleep 1
+capture brushes-tray
+tap $ERASER
+sleep 1
+adb shell "$(stroke 950 250 950 550)"
+sleep 1
+capture brushes-erased
+inked 950 400 && { echo "scenario: the eraser left the stroke where it passed"; failed=1; }
+# The eraser is 48 page px (about 40 screen px) wide: 50 px either side of its middle is kept.
+inked 900 400 || { echo "scenario: the eraser took away more than it passed over"; failed=1; }
+inked 1000 400 || { echo "scenario: the eraser took away more than it passed over"; failed=1; }
+tap $UNDO_BUTTON
+sleep 1
+capture brushes-unerased
+inked 950 400 || { echo "scenario: undo did not bring the erased part back"; failed=1; }
+tap $REDO_BUTTON
+sleep 1
+capture brushes-reerased
+inked 950 400 && { echo "scenario: redo did not erase again"; failed=1; }
+tap $UNDO_BUTTON
+sleep 1
+# The thick pen (40 page px, about 33 screen px) reaches 15 px from its middle; the medium does not.
+tap $BRUSH_BUTTON
+sleep 1
+tap $THICK_BRUSH
+sleep 1
+adb shell "$(stroke 400 800 1500 800)"
+sleep 1
+capture brushes-thick
+inked 950 815 || { echo "scenario: the thick pen is not thick"; failed=1; }
+inked 950 415 && { echo "scenario: the medium pen is as wide as the thick one"; failed=1; }
+# Erasing, then choosing a color: the next stroke draws, in that color.
+tap $BRUSH_BUTTON
+sleep 1
+tap $ERASER
+sleep 1
+tap $RED_SWATCH
+sleep 1
+adb shell "$(stroke 400 1000 1500 1000)"
+sleep 1
+capture brushes-red
+colored 950 1000 229 57 53 || { echo "scenario: a color chosen while erasing did not draw in it"; failed=1; }
+# A yellow highlighter across the purple thick stroke: the purple shows through it, and on paper
+# it still shows.
+tap $BRUSH_BUTTON
+sleep 1
+tap $HIGHLIGHTER
+sleep 1
+tap $YELLOW_SWATCH
+sleep 1
+adb shell "$(stroke 1200 650 1200 900)"
+sleep 1
+capture brushes-highlighter
+colored 1200 800 253 216 53 && { echo "scenario: the highlighter hides what is under it"; failed=1; }
+inked 1200 680 || { echo "scenario: the highlighter does not show on paper"; failed=1; }
+# A coloring page (see coloring for its coordinates): fill the unicorn's body, draw red across it,
+# erase through the stroke, the fill and the ground line.
+PURPLE="122 75 224"
+adb shell "input tap $HOME_BUTTON"
+home_open
+tap $COLORING_TILE
+picker_open
+tap $FIRST_COLORING
+page_open
+tap $FILL_BUTTON
+sleep 1
+tap 888 684
+sleep 1
+tap $BRUSH_BUTTON
+sleep 1
+tap $THICK_BRUSH
+sleep 1
+tap $RED_SWATCH
+sleep 1
+adb shell "$(stroke 700 684 1100 684)"
+sleep 1
+tap $BRUSH_BUTTON
+sleep 1
+tap $ERASER
+sleep 1
+adb shell "$(stroke 888 550 888 1050)"
+sleep 1
+capture brushes-coloring-erased
+check_coloring() {
+  colored 888 684 $PURPLE || { echo "scenario: $1: the eraser took the fill"; failed=1; }
+  colored 760 684 229 57 53 || { echo "scenario: $1: the eraser took the stroke away from its path"; failed=1; }
+  inked 888 1010 || { echo "scenario: $1: the eraser took the line art"; failed=1; }
+}
+check_coloring "on the page"
+adb shell "input tap $HOME_BUTTON"
+home_open
+tap $SAVED_TILE
+page_open
+capture brushes-coloring-reopened
+check_coloring "reopened"
+no_errors
+[ "$failed" -eq 0 ] || exit 1
+echo "scenario brushes: erased, unerased, re-erased, thick, see-through, red; fill and lines kept"

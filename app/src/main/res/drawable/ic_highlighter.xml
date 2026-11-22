@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The highlighter: a wide see-through yellow stripe over a thin line. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path android:fillColor="#00000000" android:strokeColor="#FF5B3FA8" android:strokeWidth="2"
+        android:pathData="M8,24 L40,24" />
+    <path android:fillColor="#00000000" android:strokeColor="#99FDD835" android:strokeWidth="14"
+        android:pathData="M8,24 L40,24" />
+</vector>
