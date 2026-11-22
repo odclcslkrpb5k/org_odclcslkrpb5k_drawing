@@ -7,11 +7,11 @@
 #
 # A change to a control, its configuration, the build or the code the plants edit replays every
 # control's planted bug (TS-5).
-^(tools/checks/|test-fixtures/|config/|docker/Dockerfile$|compose\.yaml$|build\.gradle\.kts$|settings\.gradle\.kts$|gradle\.properties$|gradle/|[a-z-]*gradle\.lockfile$|(app|core)/|tools/vendor-manifest\.tsv$)	plants	docker compose run --build --rm plants
+^(tools/checks/|test-fixtures/|config/|docker/Dockerfile$|compose\.yaml$|build\.gradle\.kts$|settings\.gradle\.kts$|gradle\.properties$|gradle/|[a-z-]*gradle\.lockfile$|(app|core)/|tools/templates/|templates/|tools/vendor-manifest\.tsv$)	plants	docker compose run --build --rm plants
 # A change to the ship tool runs its own tests.
 ^(tools/ship/|\.githooks/|test/ship/|test/support/|docker/ship\.Dockerfile$|compose\.yaml$)	ship-tests	docker compose run --build --rm ship-tests
 # A change to the app or its model runs every emulator scenario.
-^(app/|core/src/main/|test-fixtures/scenarios/|tools/checks/emulator$|tools/emulator$)	scenarios	tools/emulator test-fixtures/scenarios/all
+^(app/|core/src/main/|templates/|tools/templates/src/main/|test-fixtures/scenarios/|tools/checks/emulator$|tools/emulator$)	scenarios	tools/emulator test-fixtures/scenarios/all
 # Every ship scans for known vulnerabilities (TC-10), so an advisory published since the last ship
 # is found at the next one, whatever it changes. It needs the network, so it is not in the offline
 # check.

@@ -8,10 +8,16 @@ import android.os.Bundle
 import android.widget.GridLayout
 import android.widget.ImageView
 import android.widget.ScrollView
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
 import org.odclcslkrpb5k.drawing.adapters.PageStore
+import org.odclcslkrpb5k.drawing.adapters.TemplateAssets
 import org.odclcslkrpb5k.drawing.core.PageId
 
-/** Home: a big "new page" tile, then every saved page, newest first. A tap opens a page. */
+/**
+ * Home: big "new page" and "coloring pages" tiles, then every saved page, newest first. A tap opens
+ * a page. "Coloring pages" shows the coloring pages instead, with a tile (and Back) to return.
+ */
 class MainActivity : Activity() {
     private val store by lazy { PageStore(filesDir) }
     private val grid by lazy { GridLayout(this).apply { columnCount = COLUMNS } }
@@ -22,6 +28,10 @@ class MainActivity : Activity() {
      * scenario proves this: injected taps never land inside that window on the emulator.
      */
     private var opening = false
+
+    /** While the coloring pages are shown, Back returns to the saved pages. */
+    private val backToPages = OnBackInvokedCallback { refresh() }
+    private var picking = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,6 +60,7 @@ class MainActivity : Activity() {
      * them.
      */
     private fun refresh() {
+        stopPicking()
         PageDisk.run({ store.list().map { it to store.thumbnail(it) } }, failed = emptyList()) {
             pages ->
             if (!isDestroyed) show(pages)
@@ -65,26 +76,73 @@ class MainActivity : Activity() {
                 .apply { background = tileShape() },
             tileParams(),
         )
+        grid.addView(
+            iconButton(R.drawable.ic_coloring, "coloring pages") { pick() }
+                .apply { background = tileShape() },
+            tileParams(),
+        )
         for ((id, thumb) in pages) {
-            val tile =
-                ImageView(this).apply {
-                    background = tileShape()
-                    scaleType = ImageView.ScaleType.FIT_CENTER
-                    setPadding(dp(TILE_PAD), dp(TILE_PAD), dp(TILE_PAD), dp(TILE_PAD))
-                    contentDescription = "drawing"
-                    if (thumb != null) setImageBitmap(thumb)
-                    setOnClickListener { open(id) }
-                }
+            val tile = tile(thumb, "drawing")
+            tile.setOnClickListener { open(id) }
             grid.addView(tile, tileParams())
         }
     }
 
-    private fun open(id: PageId) {
+    /** Reads the coloring pages' previews on the disk thread, then shows them to choose from. */
+    private fun pick() {
+        PageDisk.run(
+            { TemplateAssets.names(assets).map { it to TemplateAssets.preview(assets, it) } },
+            failed = emptyList(),
+        ) { pages ->
+            if (!isDestroyed) showColoring(pages)
+        }
+    }
+
+    private fun showColoring(pages: List<Pair<String, Bitmap?>>) {
+        if (!picking) {
+            picking = true
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                backToPages,
+            )
+        }
+        grid.removeAllViews()
+        grid.addView(
+            iconButton(R.drawable.ic_home, "my drawings") { refresh() }
+                .apply { background = tileShape() },
+            tileParams(),
+        )
+        for ((name, preview) in pages) {
+            val tile = tile(preview, "coloring page")
+            tile.setOnClickListener {
+                open(PageId.next(System.currentTimeMillis(), created++), template = name)
+            }
+            grid.addView(tile, tileParams())
+        }
+    }
+
+    private fun stopPicking() {
+        if (!picking) return
+        picking = false
+        onBackInvokedDispatcher.unregisterOnBackInvokedCallback(backToPages)
+    }
+
+    private fun tile(image: Bitmap?, description: String) =
+        ImageView(this).apply {
+            background = tileShape()
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            setPadding(dp(TILE_PAD), dp(TILE_PAD), dp(TILE_PAD), dp(TILE_PAD))
+            contentDescription = description
+            if (image != null) setImageBitmap(image)
+        }
+
+    private fun open(id: PageId, template: String? = null) {
         if (opening) return
         opening = true
-        startActivity(
+        val intent =
             Intent(this, DrawingActivity::class.java).putExtra(DrawingActivity.EXTRA_PAGE, id.value)
-        )
+        if (template != null) intent.putExtra(DrawingActivity.EXTRA_TEMPLATE, template)
+        startActivity(intent)
     }
 
     private fun tileParams() =

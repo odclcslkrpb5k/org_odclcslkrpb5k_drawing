@@ -27,6 +27,9 @@
 ^(app|core)/src/(main|test|androidTest)/kotlin/.*\.kt$
 ^app/src/main/AndroidManifest\.xml$
 ^app/src/main/res/(drawable|mipmap|values|xml)/[a-z0-9_]+\.xml$
+# Coloring pages: SVG sources named as tools/templates requires, and their region counts.
+^templates/[a-z][a-z0-9-]*\.svg$
+^templates/pages\.tsv$
 # Tooling, configuration and fixtures.
 ^config/detekt/detekt\.yml$
 ^docker/(ship\.)?Dockerfile$

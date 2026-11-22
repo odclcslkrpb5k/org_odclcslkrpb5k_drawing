@@ -76,23 +76,12 @@ class StampTray(private val context: Context, private val arm: (Stamp?) -> Unit)
     fun showArmed(face: Stamp?) {
         armed = face
         button.setImageResource(face?.let { STAMP_DRAWABLES.getValue(it) } ?: R.drawable.ic_stamps)
-        button.background =
-            GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(if (face == null) Color.WHITE else ARMED_FILL)
-                setStroke(
-                    context.dp(if (face == null) 2 else ARMED_RING),
-                    if (face == null) EDGE else ARMED,
-                )
-            }
+        button.background = context.toolShape(active = face != null)
     }
 
     private companion object {
         const val PAD = 12
         const val FACE = 112
-        const val ARMED_RING = 5
         const val EDGE = 0xFFBDBDBD.toInt()
-        const val ARMED = 0xFF7A4BE0.toInt()
-        const val ARMED_FILL = 0xFFE6DAFF.toInt()
     }
 }

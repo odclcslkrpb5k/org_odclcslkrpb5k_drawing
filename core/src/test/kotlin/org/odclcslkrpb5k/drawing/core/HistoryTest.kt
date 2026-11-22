@@ -1,5 +1,6 @@
 package org.odclcslkrpb5k.drawing.core
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.property.checkAll
@@ -49,6 +50,34 @@ class HistoryTest :
                 val undoneSince = page.apply(Op.AddStamp(placed)).undo()
                 undoneSince.moveStamp(placed, moved) shouldBe undoneSince
             }
+        }
+
+        "undo, redo and every change keep the coloring page" {
+            checkAll(arbHistory(), arbOp()) { page, op ->
+                page.undo().template shouldBe page.template
+                page.undo().redo().template shouldBe page.template
+                page.apply(op).template shouldBe page.template
+                page.saved().template shouldBe page.template
+            }
+        }
+
+        "a region filled again shows its newest color, and undo brings back the one before" {
+            val first = Op.Fill(3, Argb(1))
+            val second = Op.Fill(3, Argb(2))
+            val page = History(template = "star").apply(first).apply(second)
+            page.fills shouldBe mapOf(3 to Argb(2))
+            page.undo().fills shouldBe mapOf(3 to Argb(1))
+        }
+
+        "a page names only coloring pages that are names" {
+            shouldThrow<IllegalArgumentException> { History(template = "Star") }
+        }
+
+        "a fill cannot be on a page with no coloring page, done or undone" {
+            val fill = Op.Fill(1, Argb(0))
+            shouldThrow<IllegalArgumentException> { History(listOf(fill)) }
+            shouldThrow<IllegalArgumentException> { History(undone = listOf(fill)) }
+            shouldThrow<IllegalArgumentException> { History().apply(fill) }
         }
 
         "the strokes are the done operations, in order" {

@@ -1,0 +1,10 @@
+# Each coloring page and how many regions it has. A gap in a line merges two regions, so a changed
+# count fails the build (tools/templates). The order here is the order the app shows them in.
+unicorn	23
+star	11
+heart	10
+rainbow	16
+castle	14
+cupcake	22
+microphone	17
+sword	13

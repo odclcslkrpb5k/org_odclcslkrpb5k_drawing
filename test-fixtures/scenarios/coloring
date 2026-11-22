@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# A coloring page: chosen from the picker, its line art shows; the fill tool fills the shape tapped
+# (and nothing else, and draws nothing); the gallery tile and the reopened page both keep it; undo
+# and redo on the reopened page take the fill back and forth.
+#
+# Page to screen on the emulator: x = 168 + 0.8375 px, y = 97.5 + 0.8375 py (left rail 168 px,
+# page scaled to the 1608 x 1200 surface and centred). The unicorn's body is around page
+# (860, 700); the paper above it, page (860, 200), is outside every shape; the ground line runs
+# along page y = 1090.
+set -euo pipefail
+. "$(dirname "$0")/lib.sh"
+PURPLE="122 75 224" # the default color, 0xFF7A4BE0
+adb shell am start -W -n $pkg/.MainActivity >/dev/null
+sleep 2
+tap $COLORING_TILE
+sleep 2
+capture coloring-picker
+tap $FIRST_COLORING
+page_open
+capture coloring-opened
+failed=0
+inked 972 1010 || { echo "scenario: the coloring page's line art is not shown"; failed=1; }
+tap $FILL_BUTTON
+sleep 1
+tap 888 684
+sleep 1
+# With the fill tool on, a finger down fills where it lands; the rest of the gesture draws nothing.
+# This drag starts in the shape just filled (the same color again: no change) and ends on paper.
+adb shell "$(drag 888 684 888 180)"
+sleep 1
+capture coloring-filled
+colored 888 684 $PURPLE || { echo "scenario: the tapped shape was not filled"; failed=1; }
+colored 888 600 $PURPLE || { echo "scenario: the fill did not cover the shape"; failed=1; }
+inked 888 265 && { echo "scenario: the paper around the picture was filled too"; failed=1; }
+inked 888 180 && { echo "scenario: a drag with the fill tool drew a stroke"; failed=1; }
+# The gallery tile is made from the page as the fill left it: the body near tile (1138, 187).
+adb shell "input tap $HOME_BUTTON"
+sleep 2
+capture coloring-home
+colored 1138 187 $PURPLE || { echo "scenario: the gallery tile does not show the fill"; failed=1; }
+tap $SAVED_TILE
+page_open
+capture coloring-reopened
+colored 888 684 $PURPLE || { echo "scenario: the fill did not survive reopening"; failed=1; }
+inked 972 1010 || { echo "scenario: the reopened page lost its line art"; failed=1; }
+# Undo and redo reach the fill made before leaving (the saved page holds it).
+tap $UNDO_BUTTON
+sleep 1
+capture coloring-undone
+inked 888 684 && { echo "scenario: undo left the fill"; failed=1; }
+tap $REDO_BUTTON
+sleep 1
+capture coloring-redone
+colored 888 684 $PURPLE || { echo "scenario: redo did not bring the fill back"; failed=1; }
+no_errors
+[ "$failed" -eq 0 ] || exit 1
+echo "scenario coloring: picked, filled, kept, undone, redone"

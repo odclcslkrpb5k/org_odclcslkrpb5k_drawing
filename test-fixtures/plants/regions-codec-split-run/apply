@@ -1,0 +1,1 @@
+sed -i 's/label == lastLabel)/label == lastLabel \&\& false)/' core/src/main/kotlin/org/odclcslkrpb5k/drawing/core/RegionsCodec.kt

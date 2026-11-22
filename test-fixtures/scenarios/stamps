@@ -7,7 +7,7 @@ set -euo pipefail
 adb shell am start -W -n $pkg/.MainActivity >/dev/null
 sleep 2
 tap $NEW_TILE
-sleep 2
+page_open
 tap $STAMPS_BUTTON
 sleep 1
 tap $HAPPY_FACE
@@ -43,9 +43,9 @@ adb shell "input tap $HOME_BUTTON"
 sleep 2
 capture stamp-home
 # The gallery tile shows the moved happy face: page (1352,899) in the tile's thumbnail.
-inked_column 779 220 232 || { echo "scenario: the gallery tile does not show the stamp"; failed=1; }
-tap $SECOND_TILE
-sleep 3
+inked_column 1235 220 232 || { echo "scenario: the gallery tile does not show the stamp"; failed=1; }
+tap $SAVED_TILE
+page_open
 capture stamp-reopened
 inked 1300 850 || { echo "scenario: the stamp did not survive leaving and reopening"; failed=1; }
 no_errors

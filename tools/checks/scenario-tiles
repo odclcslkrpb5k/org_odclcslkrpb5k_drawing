@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Home-screen tiles are named once, in test-fixtures/scenarios/lib.sh. A scenario that types a tile's
+# position (any point on the tile row, y = 167) keeps tapping the old tile after the tiles move:
+# survives-kill once opened "coloring pages" instead of the drawing and failed for the wrong reason.
+set -euo pipefail
+export LC_ALL=C
+cd "$(dirname "$0")/../.."
+found=$(grep -nE '\b[0-9]+ 167\b' test-fixtures/scenarios/* | grep -v '^test-fixtures/scenarios/lib.sh:' || true)
+[ -z "$found" ] || { echo "scenario-tiles: tile positions typed in a scenario; use lib.sh's names:"; echo "$found"; exit 1; }
+echo "scenario-tiles: every home tile is named in lib.sh"

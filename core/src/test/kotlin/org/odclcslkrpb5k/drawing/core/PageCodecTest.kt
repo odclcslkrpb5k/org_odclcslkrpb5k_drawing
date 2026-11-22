@@ -9,6 +9,17 @@ import io.kotest.property.arbitrary.byteArray
 import io.kotest.property.arbitrary.int
 import io.kotest.property.checkAll
 
+/**
+ * The bytes version 1 or 2 wrote for the same page: no template byte (so the page must have no
+ * template), and the older version number.
+ */
+private fun asOlderVersion(bytes: ByteArray, version: Int): ByteArray {
+    check(bytes[6] == 0.toByte()) { "a page with a template has no older form" }
+    val older = bytes.copyOfRange(0, 6) + bytes.copyOfRange(7, bytes.size)
+    older[4] = version.toByte()
+    return older
+}
+
 class PageCodecTest :
     StringSpec({
         "a page decodes to the page that was encoded" {
@@ -20,10 +31,7 @@ class PageCodecTest :
         "undone operations are not saved" {
             checkAll(arbHistory()) { page ->
                 val withUndo = page.undo()
-                check(
-                    PageCodec.decode(PageCodec.encode(withUndo)) ==
-                        Outcome.Ok(History(withUndo.done))
-                )
+                check(PageCodec.decode(PageCodec.encode(withUndo)) == Outcome.Ok(withUndo.saved()))
             }
         }
 
@@ -94,16 +102,60 @@ class PageCodecTest :
 
         "a page saved by version 1, strokes only, still opens" {
             checkAll(arbStrokesOnly()) { page ->
-                val bytes = PageCodec.encode(page)
-                bytes[4] = 1
-                PageCodec.decode(bytes) shouldBe Outcome.Ok(page)
+                PageCodec.decode(asOlderVersion(PageCodec.encode(page), 1)) shouldBe
+                    Outcome.Ok(page)
             }
         }
 
         "a stamp in a version 1 page is refused, since version 1 had none" {
             val stamp = StampData(Stamp.HAPPY, 100f, 100f, StampData.DEFAULT_SIZE)
-            val bytes = PageCodec.encode(History(listOf(Op.AddStamp(stamp))))
-            bytes[4] = 1
+            val bytes = asOlderVersion(PageCodec.encode(History(listOf(Op.AddStamp(stamp)))), 1)
+            PageCodec.decode(bytes) shouldBe Outcome.Err(DecodeError.OUT_OF_RANGE)
+        }
+
+        "a page saved by version 2, strokes and stamps, still opens" {
+            checkAll(arbHistory()) { page ->
+                if (page.template == null) {
+                    PageCodec.decode(asOlderVersion(PageCodec.encode(page), 2)) shouldBe
+                        Outcome.Ok(page)
+                }
+            }
+        }
+
+        "a fill on a page with no coloring page is refused" {
+            // History cannot hold one, so the bytes are a page with coloring page "a" and one fill,
+            // with the name taken out: length byte 0, and the name's one byte removed.
+            val named = PageCodec.encode(History(listOf(Op.Fill(1, Argb(0))), template = "a"))
+            val bytes = named.copyOfRange(0, 7) + named.copyOfRange(8, named.size)
+            bytes[6] = 0
+            PageCodec.decode(bytes) shouldBe Outcome.Err(DecodeError.OUT_OF_RANGE)
+        }
+
+        "a version 2 file, written byte by byte as version 2 wrote it, opens" {
+            val v2 =
+                java.nio.ByteBuffer.allocate(4 + 2 + 4 + 1 + 1 + 4 + 4 + 4)
+                    .order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                    .putInt(0x5752444F)
+                    .putShort(2)
+                    .putInt(1)
+                    .put(2)
+                    .put(Stamp.LOVE.ordinal.toByte())
+                    .putFloat(300f)
+                    .putFloat(400f)
+                    .putFloat(250f)
+                    .array()
+            PageCodec.decode(v2) shouldBe
+                Outcome.Ok(History(listOf(Op.AddStamp(StampData(Stamp.LOVE, 300f, 400f, 250f)))))
+        }
+
+        "a fill of region 0, the lines, is refused" {
+            val bytes = PageCodec.encode(History(listOf(Op.Fill(0, Argb(0))), template = "star"))
+            PageCodec.decode(bytes) shouldBe Outcome.Err(DecodeError.OUT_OF_RANGE)
+        }
+
+        "a coloring page name that is not a name is refused" {
+            val bytes = PageCodec.encode(History(template = "star"))
+            bytes[7] = 'S'.code.toByte()
             PageCodec.decode(bytes) shouldBe Outcome.Err(DecodeError.OUT_OF_RANGE)
         }
 

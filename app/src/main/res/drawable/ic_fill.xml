@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The fill tool: a tipped paint bucket pouring a drop. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path android:fillColor="#FFFFFFFF" android:strokeColor="#FF5B3FA8" android:strokeWidth="3"
+        android:strokeLineJoin="round"
+        android:pathData="M8,20 L22,6 L38,22 L24,36 Z" />
+    <path android:fillColor="#FF29B6F6" android:strokeColor="#FF5B3FA8" android:strokeWidth="2"
+        android:strokeLineJoin="round"
+        android:pathData="M9,21 L23,35 Q17,40 11,35 Q5,29 9,21 Z" />
+    <path android:fillColor="#FF29B6F6"
+        android:pathData="M38,30 Q42,36 42,39 A4,4 0 0,1 34,39 Q34,36 38,30 Z" />
+</vector>

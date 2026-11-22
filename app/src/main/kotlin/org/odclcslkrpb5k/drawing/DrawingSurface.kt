@@ -10,6 +10,7 @@ import android.view.MotionEvent
 import android.widget.FrameLayout
 import androidx.core.graphics.createBitmap
 import androidx.ink.authoring.InProgressStrokesView
+import org.odclcslkrpb5k.drawing.adapters.Coloring
 import org.odclcslkrpb5k.drawing.core.Argb
 import org.odclcslkrpb5k.drawing.core.BrushKind
 import org.odclcslkrpb5k.drawing.core.BrushSpec
@@ -17,18 +18,20 @@ import org.odclcslkrpb5k.drawing.core.History
 import org.odclcslkrpb5k.drawing.core.Op
 import org.odclcslkrpb5k.drawing.core.Page
 import org.odclcslkrpb5k.drawing.core.Stamp
-import org.odclcslkrpb5k.drawing.core.StampData
 import org.odclcslkrpb5k.drawing.core.StrokeData
 import org.odclcslkrpb5k.drawing.core.isSaveable
 
 private const val BRUSH_SIZE = 18f
 
 /**
- * The page: finished strokes, then stamps above them, then the stroke in progress on Ink's front
- * buffer. It owns the page's history; every change goes through [onChange].
+ * The page, bottom to top: a coloring page's fills, the finished strokes, its line art (so the
+ * lines stay crisp over scribbles), the stamps, then the stroke in progress on Ink's front buffer.
+ * It owns the page's history; every change goes through [onChange].
  */
 class DrawingSurface(context: Context) : FrameLayout(context) {
     private val finished = FinishedStrokesView(context)
+    private val fills = FillsView(context)
+    private val lines = LinesView(context)
     private val stampsView = StampsView(context)
     private val ink = InProgressStrokesView(context)
     private val viewToPage = Matrix()
@@ -37,11 +40,26 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
         StampGestures(
             stampsView,
             viewToPage,
-            place = ::placeStamp,
+            place = { add(Op.AddStamp(it)) },
             commit = { from, to -> change(history.moveStamp(from, to)) },
             armedChanged = { onArmed(it) },
         )
+    private val fillGestures =
+        FillGestures(viewToPage) { region ->
+            // Filling a region with the color it has is no change: nothing to undo.
+            if (history.fills[region] != color && !add(Op.Fill(region, color))) {
+                Log.w(TAG, "fill not kept")
+            }
+        }
     private var history = History()
+
+    /** On a coloring page, a tap fills the region under the finger instead of drawing. */
+    var filling: Boolean
+        get() = fillGestures.on
+        set(value) {
+            fillGestures.on = value
+            if (fillGestures.on) stampGestures.release()
+        }
 
     /** Called on the main thread after every change to the page. */
     var onChange: (History) -> Unit = {}
@@ -62,14 +80,25 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
     init {
         setBackgroundColor(Color.WHITE)
         stampsView.pageToView = finished.pageToView
+        fills.pageToView = finished.pageToView
+        lines.pageToView = finished.pageToView
+        addView(fills)
         addView(finished)
+        addView(lines)
         addView(stampsView)
         addView(ink)
     }
 
-    /** Shows a page read from disk, replacing whatever is drawn. */
-    fun show(page: History) {
+    /**
+     * Shows a page read from disk, replacing whatever is drawn, over [coloring] when it was started
+     * from a coloring page (null if that page could not be read: the drawing still opens).
+     */
+    fun show(page: History, coloring: Coloring?) {
         history = page
+        fillGestures.regions = coloring?.regions
+        fills.coloring = coloring
+        lines.lines = coloring?.lines
+        fills.show(page.fills)
         finished.show(page.strokes)
         stampsView.stamps = page.stamps
     }
@@ -101,7 +130,10 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
             createBitmap((Page.WIDTH / THUMB_SCALE).toInt(), (Page.HEIGHT / THUMB_SCALE).toInt())
         val canvas = Canvas(thumb)
         canvas.scale(1f / THUMB_SCALE, 1f / THUMB_SCALE)
+        canvas.drawColor(Color.WHITE)
+        fills.drawPage(canvas)
         finished.drawPage(canvas)
+        lines.drawPage(canvas)
         stampsView.drawOnPage(canvas)
         return thumb
     }
@@ -130,17 +162,19 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
         }
     }
 
-    /** A new stamp, if the page has room (the same rule as for strokes). */
-    private fun placeStamp(stamp: StampData): Boolean {
+    /** A new stamp or fill, if the page has room (the same rule as for strokes). */
+    private fun add(op: Op): Boolean {
         if (history.isFull) {
-            Log.w(TAG, "stamp not kept: page full")
+            Log.w(TAG, "not kept: page full")
             return false
         }
-        change(history.apply(Op.AddStamp(stamp)))
+        // Painted before the change is reported: the thumbnail taken for it must show the fill.
+        if (op is Op.Fill) fills.fill(op.region, op.color)
+        change(history.apply(op))
         return true
     }
 
-    /** A new or moved stamp. */
+    /** A new or moved stamp, or a new fill. */
     private fun change(next: History) {
         if (next == history) return
         history = next
@@ -153,6 +187,7 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
         stampGestures.release()
         if (next == history) return
         history = next
+        fills.show(next.fills)
         finished.show(next.strokes)
         stampsView.stamps = next.stamps
         onChange(next)
@@ -167,7 +202,9 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
             (h - Page.HEIGHT * scale) / 2,
         )
         finished.pageToView.invert(viewToPage)
+        fills.invalidate()
         finished.invalidate()
+        lines.invalidate()
         stampsView.invalidate()
     }
 
@@ -176,7 +213,9 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.actionMasked == MotionEvent.ACTION_DOWN) onTouched()
         // Stamps first, unless a stroke is under way: a stroke is never interrupted by a stamp.
-        if (!strokes.drawing && stampGestures.handle(event)) return true
+        // Stamps, then filling, take whole gestures; neither ever interrupts a stroke under way.
+        val taken = !strokes.drawing && (stampGestures.handle(event) || fillGestures.handle(event))
+        if (taken) return true
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 requestUnbufferedDispatch(event)
@@ -201,6 +240,7 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
         const val TAG = "DrawingSurface"
         const val LEAVE_FRAMES = 180
         const val THUMB_SCALE = 6f
+
         const val DEFAULT_COLOR = 0xFF7A4BE0.toInt()
     }
 }

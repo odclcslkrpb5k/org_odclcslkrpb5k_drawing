@@ -1,4 +1,10 @@
 # The whole build environment: the workstation needs only Docker (TC-9).
+
+# resvg, from source: its prebuilt Linux binary needs a newer glibc than the build image has.
+# --locked builds the crate's own Cargo.lock; crates.io checksums every crate it fetches.
+FROM rust:1-slim-bookworm@sha256:7c7d4eb4d05b7781187a327809466cfddf29753f6defdc3d19a0e291951b7a37 AS resvg
+RUN cargo install resvg --version 0.50.0 --locked --root /out
+
 FROM eclipse-temurin:21-jdk-noble@sha256:a09e64f4976df9c4f2029c6abe64fc26f069a342ec9a7f147dce7b1933ebda16
 
 RUN apt-get update \
@@ -39,6 +45,11 @@ RUN sdkmanager --list_installed 2>/dev/null \
     | sort >/tmp/want \
  && diff /tmp/want /tmp/sdk && rm /tmp/sdk /tmp/want
 
+# resvg renders the coloring pages' SVGs at build time (tools/templates); built in its own stage.
+COPY --from=resvg /out/bin/resvg /home/builder/resvg/resvg
+ENV RESVG=/home/builder/resvg/resvg
+RUN test "$($RESVG --version)" = "0.50.0"
+
 WORKDIR /repo
 
 # Warm Gradle's caches from the build files and placeholder sources, so a source change does not
@@ -50,6 +61,7 @@ COPY --chown=builder core/build.gradle.kts core/gradle.lockfile core/
 COPY --chown=builder app/build.gradle.kts app/gradle.lockfile app/
 COPY --chown=builder app/src/main/AndroidManifest.xml app/src/main/
 COPY --chown=builder app/src/main/res app/src/main/res
+COPY --chown=builder tools/templates/build.gradle.kts tools/templates/gradle.lockfile tools/templates/
 COPY --chown=builder tools/checks/warm tools/checks/
 COPY --chown=builder config config
 RUN WARM_IN_IMAGE_BUILD=1 tools/checks/warm

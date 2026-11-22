@@ -12,9 +12,9 @@ for name in "${names[@]}"; do
   work=$(mktemp -d)
   # The copy has its own build directory, so no plant reads another tree's output (TS-8).
   tar -C "$root" --exclude=./build --exclude=./.gradle -cf - . | tar -C "$work" -xf -
-  before=$(cd "$work" && find . -type f -not -path './test-fixtures/*' -printf '%m %p\n' -exec sha256sum {} + | sort)
+  before=$(cd "$work" && find . -type f -not -path './test-fixtures/plants/*' -printf '%m %p\n' -exec sha256sum {} + | sort)
   (cd "$work" && bash "$plant/apply")
-  after=$(cd "$work" && find . -type f -not -path './test-fixtures/*' -printf '%m %p\n' -exec sha256sum {} + | sort)
+  after=$(cd "$work" && find . -type f -not -path './test-fixtures/plants/*' -printf '%m %p\n' -exec sha256sum {} + | sort)
   if [ "$before" = "$after" ]; then
     echo "PLANT $name: apply changed nothing"; failed=1; rm -rf "$work"; continue
   fi

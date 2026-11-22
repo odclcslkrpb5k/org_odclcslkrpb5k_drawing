@@ -2,8 +2,10 @@ package org.odclcslkrpb5k.drawing.core
 
 import io.kotest.property.Arb
 import io.kotest.property.arbitrary.bind
+import io.kotest.property.arbitrary.element
 import io.kotest.property.arbitrary.enum
 import io.kotest.property.arbitrary.filter
+import io.kotest.property.arbitrary.flatMap
 import io.kotest.property.arbitrary.float
 import io.kotest.property.arbitrary.int
 import io.kotest.property.arbitrary.list
@@ -13,6 +15,7 @@ import io.kotest.property.arbitrary.map
 private const val MAX_POINTS = 40
 private const val MAX_STROKES = 12
 private const val MAX_MS = 3_600_000L
+private const val MAX_REGION = 200
 
 /** A finite float in [min, max]; Kotest's float edge cases include NaN and infinities. */
 private fun finite(min: Float, max: Float): Arb<Float> =
@@ -50,12 +53,28 @@ fun arbStamp(): Arb<StampData> =
         StampData(face, x, y, size)
     }
 
-fun arbOp(): Arb<Op> =
-    Arb.bind(arbStroke(), arbStamp(), Arb.int(0, 3)) { stroke, stamp, pick ->
-        if (pick == 0) Op.AddStamp(stamp) else Op.AddStroke(stroke)
+fun arbFill(): Arb<Op.Fill> =
+    Arb.bind(Arb.int(1, MAX_REGION), Arb.int()) { region, color -> Op.Fill(region, Argb(color)) }
+
+/** An operation; fills only when [fills], since only a page with a template has regions. */
+fun arbOp(fills: Boolean = false): Arb<Op> =
+    Arb.bind(arbStroke(), arbStamp(), arbFill(), Arb.int(0, 3)) { stroke, stamp, fill, pick ->
+        when {
+            pick == 0 -> Op.AddStamp(stamp)
+            pick == 1 && fills -> fill
+            else -> Op.AddStroke(stroke)
+        }
     }
 
-fun arbHistory(): Arb<History> = Arb.list(arbOp(), 0..MAX_STROKES).map { History(it) }
+/** Blank pages and coloring pages, including the longest name a page can carry. */
+val TEMPLATES: List<String?> = listOf(null, null, "star", "unicorn", "a", "z" + "9".repeat(31))
+
+fun arbHistory(): Arb<History> =
+    Arb.element(TEMPLATES).flatMap { template ->
+        Arb.list(arbOp(fills = template != null), 0..MAX_STROKES).map {
+            History(it, template = template)
+        }
+    }
 
 /** A page of strokes only, as version 1 could hold. */
 fun arbStrokesOnly(): Arb<History> =

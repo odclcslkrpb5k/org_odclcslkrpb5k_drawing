@@ -1,8 +1,6 @@
 package org.odclcslkrpb5k.drawing
 
 import android.app.Activity
-import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.util.Log
 import android.view.Gravity
@@ -10,13 +8,16 @@ import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.window.OnBackInvokedDispatcher
+import org.odclcslkrpb5k.drawing.adapters.Coloring
 import org.odclcslkrpb5k.drawing.adapters.InkLoader
 import org.odclcslkrpb5k.drawing.adapters.PageStore
 import org.odclcslkrpb5k.drawing.adapters.StoreError
+import org.odclcslkrpb5k.drawing.adapters.TemplateAssets
 import org.odclcslkrpb5k.drawing.core.Argb
 import org.odclcslkrpb5k.drawing.core.History
 import org.odclcslkrpb5k.drawing.core.Outcome
 import org.odclcslkrpb5k.drawing.core.PageId
+import org.odclcslkrpb5k.drawing.core.Templates
 
 /** The colors on the swatch rail, brightest first. */
 private val SWATCHES =
@@ -36,18 +37,35 @@ private val SWATCHES =
     )
 
 /**
- * One page: home, undo and redo on the left, the page in the middle, colors on the right. Nothing
- * is shown, and no touch is taken, until the page is read: a stroke can never land on a page that
- * is then replaced. A page that cannot be read is never written over; the screen closes instead.
- * The page is saved after every change and whenever the screen stops being in front.
+ * One page: home, undo and redo on the left, the page in the middle, colors on the right; a page
+ * started from a coloring page also has the fill tool. Nothing is shown, and no touch is taken,
+ * until the page is read: a stroke can never land on a page that is then replaced. A page that
+ * cannot be read is never written over; the screen closes instead. The page is saved after every
+ * change and whenever the screen stops being in front.
  */
 class DrawingActivity : Activity() {
     private val surface by lazy { DrawingSurface(this) }
     private val store by lazy { PageStore(filesDir) }
     private val id by lazy { intent.getStringExtra(EXTRA_PAGE)?.let(PageId::parse) }
+    /** The coloring page a new page starts from; ignored for a page already saved. */
+    private val template by lazy {
+        intent.getStringExtra(EXTRA_TEMPLATE)?.takeIf { Templates.isName(it) }
+    }
     private var opened: PageId? = null
     private val swatches = mutableListOf<View>()
-    private val stamps by lazy { StampTray(this) { face -> surface.arm(face) } }
+    private val stamps by lazy {
+        StampTray(this) { face ->
+            if (face != null) setFilling(false)
+            surface.arm(face)
+        }
+    }
+    private val bucket by lazy {
+        iconButton(R.drawable.ic_fill, "fill") {
+            stamps.close()
+            surface.arm(null)
+            setFilling(!surface.filling)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,7 +91,9 @@ class DrawingActivity : Activity() {
         PageDisk.run(
             {
                 when (val has = store.hasVersions(page)) {
-                    is Outcome.Ok -> if (has.value) store.load(page) else Outcome.Ok(History())
+                    is Outcome.Ok ->
+                        if (has.value) store.load(page)
+                        else Outcome.Ok(History(template = template))
                     is Outcome.Err -> has
                 }
             },
@@ -83,8 +103,8 @@ class DrawingActivity : Activity() {
             val unsaved = PageSaves.unsaved(page)
             when {
                 gone() -> Unit
-                unsaved != null -> open(page, unsaved)
-                loaded is Outcome.Ok -> open(page, loaded.value)
+                unsaved != null -> withColoring(page, unsaved)
+                loaded is Outcome.Ok -> withColoring(page, loaded.value)
                 loaded is Outcome.Err -> {
                     Log.e(TAG, "page not opened: ${loaded.error}")
                     finish()
@@ -93,9 +113,33 @@ class DrawingActivity : Activity() {
         }
     }
 
-    private fun open(page: PageId, history: History) {
-        setContentView(layout())
-        surface.show(history)
+    /**
+     * Opens the page once its coloring page, if it has one, is read on the disk thread. A coloring
+     * page that cannot be read (say, one a later version dropped) leaves the drawing to open plain.
+     */
+    private fun withColoring(page: PageId, history: History) {
+        val name = history.template
+        if (name == null) {
+            open(page, history, null)
+            return
+        }
+        PageDisk.run(
+            { TemplateAssets.load(assets, name) },
+            failed = Outcome.Err("unexpected failure"),
+        ) { loaded ->
+            val coloring =
+                when (loaded) {
+                    is Outcome.Ok -> loaded.value
+                    is Outcome.Err -> null.also { Log.e(TAG, "coloring page: ${loaded.error}") }
+                }
+            // The closing screen may have handed over a change while the coloring page was read.
+            if (!gone()) open(page, PageSaves.unsaved(page) ?: history, coloring)
+        }
+    }
+
+    private fun open(page: PageId, history: History, coloring: Coloring?) {
+        setContentView(layout(coloring != null))
+        surface.show(history, coloring)
         opened = page
         PageSaves.open(page, this)
         surface.onChange = { changed ->
@@ -105,8 +149,17 @@ class DrawingActivity : Activity() {
         }
     }
 
-    /** Home at the top; stamps, undo and redo at the bottom, under the child's hand. */
-    private fun toolsRail(): View =
+    /** Turns the fill tool on or off; the button shows which. */
+    private fun setFilling(on: Boolean) {
+        surface.filling = on
+        bucket.background = toolShape(active = surface.filling)
+    }
+
+    /**
+     * Home at the top; the fill tool (on a coloring page), stamps, undo and redo at the bottom,
+     * under the child's hand.
+     */
+    private fun toolsRail(coloring: Boolean): View =
         LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
@@ -116,6 +169,7 @@ class DrawingActivity : Activity() {
                 square(),
             )
             addView(View(context), LinearLayout.LayoutParams(1, 0, 1f))
+            if (coloring) addView(bucket, square())
             addView(stamps.button, square())
             addView(
                 iconButton(R.drawable.ic_undo, "undo") { stamps.close().also { surface.undo() } },
@@ -142,8 +196,8 @@ class DrawingActivity : Activity() {
             }
         }
 
-    private fun layout(): View {
-        val tools = toolsRail()
+    private fun layout(coloring: Boolean): View {
+        val tools = toolsRail(coloring)
         surface.onArmed = { face -> stamps.showArmed(face) }
         surface.onTouched = { stamps.close() }
         val colors = colorsRail()
@@ -186,13 +240,6 @@ class DrawingActivity : Activity() {
         }
     }
 
-    private fun swatchShape(color: Int, selected: Boolean) =
-        GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setColor(color)
-            setStroke(dp(if (selected) SELECTED_RING else 1), if (selected) Color.BLACK else EDGE)
-        }
-
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) immersive()
@@ -216,14 +263,13 @@ class DrawingActivity : Activity() {
 
     companion object {
         const val EXTRA_PAGE = "page"
+        const val EXTRA_TEMPLATE = "template"
         private const val TAG = "DrawingActivity"
         private const val PAD = 12
         private const val SWATCH = 72
-        private const val SELECTED_RING = 5
         private const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
         private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
         private const val BACKGROUND = 0xFFF4EEFF.toInt()
-        private const val EDGE = 0xFFBDBDBD.toInt()
         private const val DEFAULT = 0xFF7A4BE0
     }
 }

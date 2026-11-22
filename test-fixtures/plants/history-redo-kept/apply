@@ -1,1 +1,1 @@
-sed -i 's/fun apply(op: Op): History = History(done + op, emptyList())/fun apply(op: Op): History = History(done + op, undone)/' core/src/main/kotlin/org/odclcslkrpb5k/drawing/core/History.kt
+sed -i 's/fun apply(op: Op): History = copy(done = done + op, undone = emptyList())/fun apply(op: Op): History = copy(done = done + op)/' core/src/main/kotlin/org/odclcslkrpb5k/drawing/core/History.kt

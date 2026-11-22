@@ -1,0 +1,1 @@
+sed -i 's/if (header.template != null) fill(r) else/if (header.template != null || header.version > 0) fill(r) else/' core/src/main/kotlin/org/odclcslkrpb5k/drawing/core/PageCodec.kt

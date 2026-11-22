@@ -70,8 +70,13 @@ inked_column() {
 
 # Positions on screen (1920x1200, density 240): home's first two tiles, and the drawing screen's
 # home button (top of the left rail).
+# Home: "new page", "coloring pages", then the saved pages, newest first. The tiles are 456 px
+# apart; in the coloring picker the first tile goes back and the second is the first page.
 NEW_TILE="246 167"
-SECOND_TILE="702 167"
+COLORING_TILE="702 167"
+SAVED_TILE="1158 167"
+FIRST_COLORING="702 167"
+FILL_BUTTON="84 594"
 HOME_BUTTON="84 102"
 # The drawing screen's left rail, top to bottom after a spacer: stamps, undo, redo; and the stamp
 # tray's first face (happy), beside the rail.
@@ -83,3 +88,25 @@ SAD_FACE="438 348"
 
 # A one-finger drag from (x1,y1) to (x2,y2), as one adb shell command.
 drag() { stroke "$@"; }
+
+# Waits, up to 20 s, until a page is open: its color rail is shown (the top swatch is red), which
+# happens only once the page is read and the screen takes touches. A fixed sleep was too short on
+# a loaded machine and the first stroke landed before the page took input.
+page_open() {
+  local i
+  for i in $(seq 1 40); do
+    capture waiting
+    colored 1850 64 229 57 53 && return 0
+    sleep 0.5
+  done
+  echo "scenario: no page opened within 20 s"
+  exit 1
+}
+
+# True when the pixel at (x, y) is within 16 of the color r g b in every channel.
+colored() {
+  local r g b
+  read -r r g b <<<"$(pixel "$1" "$2")"
+  [ $((r > $3 ? r - $3 : $3 - r)) -le 16 ] && [ $((g > $4 ? g - $4 : $4 - g)) -le 16 ] &&
+    [ $((b > $5 ? b - $5 : $5 - b)) -le 16 ]
+}

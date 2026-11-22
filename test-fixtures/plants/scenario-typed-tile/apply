@@ -1,0 +1,1 @@
+printf 'tap 702 167\n' >> test-fixtures/scenarios/survives-kill

@@ -25,13 +25,16 @@ fun Context.iconButton(icon: Int, description: String, onTap: () -> Unit): Image
     ImageButton(this).apply {
         setImageResource(icon)
         contentDescription = description
-        background =
-            GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(Color.WHITE)
-                setStroke(dp(2), BUTTON_EDGE)
-            }
+        background = toolShape(active = false)
         setOnClickListener { onTap() }
+    }
+
+/** A tool button's round background; [active] fills and rings it, so a chosen tool shows. */
+fun Context.toolShape(active: Boolean): GradientDrawable =
+    GradientDrawable().apply {
+        shape = GradientDrawable.OVAL
+        setColor(if (active) ACTIVE_FILL else Color.WHITE)
+        setStroke(dp(if (active) ACTIVE_RING else 2), if (active) ACTIVE else BUTTON_EDGE)
     }
 
 /** Hides the system bars; a swipe from the edge shows them only briefly. */
@@ -43,3 +46,20 @@ fun Activity.immersive() {
 }
 
 private const val BUTTON_EDGE = 0xFFD9CCF5.toInt()
+private const val ACTIVE_RING = 5
+private const val ACTIVE = 0xFF7A4BE0.toInt()
+private const val ACTIVE_FILL = 0xFFE6DAFF.toInt()
+
+/** A round color swatch; the chosen one has a thick black ring. */
+fun Context.swatchShape(color: Int, selected: Boolean) =
+    GradientDrawable().apply {
+        shape = GradientDrawable.OVAL
+        setColor(color)
+        setStroke(
+            dp(if (selected) SWATCH_SELECTED_RING else 1),
+            if (selected) Color.BLACK else SWATCH_EDGE,
+        )
+    }
+
+private const val SWATCH_SELECTED_RING = 5
+private const val SWATCH_EDGE = 0xFFBDBDBD.toInt()

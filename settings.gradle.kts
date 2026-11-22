@@ -30,4 +30,6 @@ buildscript { dependencyLocking { lockAllConfigurations() } }
 
 rootProject.name = "drawing"
 
-include(":core", ":app")
+include(":core", ":app", ":templates")
+
+project(":templates").projectDir = file("tools/templates")

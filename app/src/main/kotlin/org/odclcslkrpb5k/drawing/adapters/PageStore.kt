@@ -57,7 +57,7 @@ class PageStore(filesDir: File) {
         val verified =
             try {
                 file.tryWrite { it.write(PageCodec.encode(history)) }
-                PageCodec.decode(file.readFully()) == Outcome.Ok(History(history.done))
+                PageCodec.decode(file.readFully()) == Outcome.Ok(history.saved())
             } catch (e: IOException) {
                 Log.w(TAG, "save failed: ${e.javaClass.simpleName}")
                 false

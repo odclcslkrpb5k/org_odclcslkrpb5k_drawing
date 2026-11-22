@@ -1,3 +1,6 @@
+import javax.inject.Inject
+import org.gradle.process.ExecOperations
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.detekt)
@@ -63,4 +66,53 @@ dependencies {
     implementation(libs.ink.brush)
     implementation(libs.ink.strokes)
     implementation(libs.ink.rendering)
+}
+
+// The coloring pages: templates/*.svg rendered, labelled and checked by tools/templates at build
+// time, so the app only looks regions up (see tools/templates). resvg is the image's, named by
+// $RESVG; outside the image the build stops at this task's missing input.
+val templateTool = configurations.create("templateTool") { isCanBeConsumed = false }
+
+dependencies { templateTool(project(":templates")) }
+
+abstract class MakeTemplates @Inject constructor(private val exec: ExecOperations) : DefaultTask() {
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val pages: DirectoryProperty
+
+    @get:Classpath abstract val tool: ConfigurableFileCollection
+
+    @get:InputFile @get:PathSensitive(PathSensitivity.NONE) abstract val resvg: RegularFileProperty
+
+    @get:OutputDirectory abstract val out: DirectoryProperty
+
+    @get:Internal abstract val work: DirectoryProperty
+
+    @TaskAction
+    fun make() {
+        val assets = out.get().dir("templates").asFile
+        assets.deleteRecursively()
+        exec
+            .javaexec {
+                classpath = tool
+                mainClass = "org.odclcslkrpb5k.drawing.templates.adapters.MainKt"
+                args(pages.get().asFile, assets, work.get().asFile, resvg.get().asFile)
+            }
+            .assertNormalExitValue()
+    }
+}
+
+val makeTemplates =
+    tasks.register<MakeTemplates>("makeTemplates") {
+        pages = rootProject.layout.projectDirectory.dir("templates")
+        tool.from(templateTool)
+        resvg.fileProvider(providers.environmentVariable("RESVG").map { File(it) })
+        out = layout.buildDirectory.dir("generated/templateAssets")
+        work = layout.buildDirectory.dir("tmp/templates")
+    }
+
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(makeTemplates, MakeTemplates::out)
+    }
 }

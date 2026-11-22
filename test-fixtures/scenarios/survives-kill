@@ -5,17 +5,17 @@ set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 adb shell am start -W -n $pkg/.MainActivity >/dev/null
 sleep 2
-tap 246 167 # the "new page" tile
-sleep 2
+tap $NEW_TILE
+page_open
 adb shell "$(stroke 500 500 1300 600)"
 sleep 2
 adb shell am force-stop $pkg
 adb shell am start -W -n $pkg/.MainActivity >/dev/null
 sleep 3
 capture home
-inked_column 685 60 280 || { echo "scenario: no thumbnail for the drawing on the home screen"; exit 1; }
-tap 702 167 # the drawing's tile, after "new page"
-sleep 3
+inked_column 1141 60 280 || { echo "scenario: no thumbnail for the drawing on the home screen"; exit 1; }
+tap $SAVED_TILE
+page_open
 capture reopened
 inked 900 550 || { echo "scenario: the stroke did not survive the kill"; exit 1; }
 no_errors

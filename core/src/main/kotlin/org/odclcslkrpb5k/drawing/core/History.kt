@@ -7,13 +7,30 @@ sealed interface Op {
 
     /** A stamp placed on the page. */
     data class AddStamp(val stamp: StampData) : Op
+
+    /** A coloring page's region filled with a color; only a page with a template has regions. */
+    data class Fill(val region: Int, val color: Argb) : Op
 }
 
 /**
- * A page's edit history. The page is exactly the operations in [done], oldest first; undo moves the
- * newest to [undone], redo moves it back, and a new operation clears [undone].
+ * A page's edit history. The page is exactly the operations in [done], oldest first, drawn over the
+ * coloring page named [template] if it has one; undo moves the newest to [undone], redo moves it
+ * back, and a new operation clears [undone].
  */
-data class History(val done: List<Op> = emptyList(), val undone: List<Op> = emptyList()) {
+data class History(
+    val done: List<Op> = emptyList(),
+    val undone: List<Op> = emptyList(),
+    val template: String? = null,
+) {
+    init {
+        require(template == null || Templates.isName(template)) { "not a coloring page name" }
+        // A fill needs regions, which only a coloring page has; the codec refuses such a page, so
+        // one could never be saved.
+        require(template != null || (done + undone).none { it is Op.Fill }) {
+            "a fill on a page with no coloring page"
+        }
+    }
+
     /** No more operations fit; the page codec reads no more than [MAX_OPS]. */
     val isFull: Boolean
         get() = done.size >= MAX_OPS
@@ -32,6 +49,13 @@ data class History(val done: List<Op> = emptyList(), val undone: List<Op> = empt
     val stamps: List<StampData>
         get() = done.filterIsInstance<Op.AddStamp>().map { it.stamp }
 
+    /** Each filled region's color; a region filled again shows its newest color. */
+    val fills: Map<Int, Argb>
+        get() = done.filterIsInstance<Op.Fill>().associate { it.region to it.color }
+
+    /** The page as saved: everything done, nothing that could be redone. */
+    fun saved(): History = copy(undone = emptyList())
+
     /**
      * Moves the stamp placed last: a stamp still being moved or sized is one operation with its
      * placing, so one undo takes it away. Only when the newest operation is exactly [from] is it
@@ -40,16 +64,17 @@ data class History(val done: List<Op> = emptyList(), val undone: List<Op> = empt
      */
     fun moveStamp(from: StampData, to: StampData): History =
         if (done.lastOrNull() == Op.AddStamp(from))
-            History(done.dropLast(1) + Op.AddStamp(to), emptyList())
+            copy(done = done.dropLast(1) + Op.AddStamp(to), undone = emptyList())
         else this
 
-    fun apply(op: Op): History = History(done + op, emptyList())
+    fun apply(op: Op): History = copy(done = done + op, undone = emptyList())
 
     fun undo(): History =
-        if (done.isEmpty()) this else History(done.dropLast(1), undone + done.last())
+        if (done.isEmpty()) this else copy(done = done.dropLast(1), undone = undone + done.last())
 
     fun redo(): History =
-        if (undone.isEmpty()) this else History(done + undone.last(), undone.dropLast(1))
+        if (undone.isEmpty()) this
+        else copy(done = done + undone.last(), undone = undone.dropLast(1))
 
     companion object {
         /** The most operations one page may hold. */

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The coloring pages tile: a page with a star, half colored in. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path android:fillColor="#FFFFFFFF" android:strokeColor="#FF5B3FA8" android:strokeWidth="2.5"
+        android:strokeLineJoin="round"
+        android:pathData="M8,6 L40,6 L40,42 L8,42 Z" />
+    <path android:fillColor="#FFFDD835"
+        android:pathData="M24,11 L24,32 L16.6,36.6 L18.5,28 L12,22.3 L20.6,21.5 Z" />
+    <path android:fillColor="#00000000" android:strokeColor="#FF212121" android:strokeWidth="2"
+        android:strokeLineJoin="round"
+        android:pathData="M24,11 L27.4,21.5 L36,22.3 L29.5,28 L31.4,36.6 L24,32 L16.6,36.6 L18.5,28 L12,22.3 L20.6,21.5 Z" />
+</vector>

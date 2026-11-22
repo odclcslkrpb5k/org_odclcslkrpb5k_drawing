@@ -1,0 +1,1 @@
+sed -i 's/        if (x > 0) top = visit(p - 1, label, top)/        if (p > 0) top = visit(p - 1, label, top)/' core/src/main/kotlin/org/odclcslkrpb5k/drawing/core/Regions.kt

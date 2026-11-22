@@ -15,9 +15,10 @@ import org.odclcslkrpb5k.drawing.core.Page
 import org.odclcslkrpb5k.drawing.core.StrokeData
 
 /**
- * Draws the finished strokes, from the app's own model, into a page-sized bitmap. A new stroke is
- * drawn into the bitmap once; the whole page is redrawn only when the strokes are replaced (load,
- * undo). Each frame only copies the bitmap.
+ * Draws the finished strokes, from the app's own model, into a page-sized bitmap, transparent where
+ * nothing is drawn so a coloring page's fills show through. A new stroke is drawn into the bitmap
+ * once; the whole page is redrawn only when the strokes are replaced (load, undo). Each frame only
+ * copies the bitmap.
  */
 class FinishedStrokesView(context: Context) : View(context) {
     private val renderer = CanvasStrokeRenderer.create()
@@ -30,7 +31,7 @@ class FinishedStrokesView(context: Context) : View(context) {
     val pageToView = Matrix()
 
     init {
-        page.eraseColor(Color.WHITE)
+        page.eraseColor(Color.TRANSPARENT)
     }
 
     /** Draws one more stroke on top of the page. */
@@ -41,7 +42,7 @@ class FinishedStrokesView(context: Context) : View(context) {
 
     /** Replaces every stroke on the page and redraws it. */
     fun show(strokes: List<StrokeData>) {
-        page.eraseColor(Color.WHITE)
+        page.eraseColor(Color.TRANSPARENT)
         strokes.forEach(::draw)
         invalidate()
     }
