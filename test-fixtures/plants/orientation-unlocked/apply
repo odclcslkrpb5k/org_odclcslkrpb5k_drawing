@@ -1,0 +1,1 @@
+sed -i '/android:screenOrientation=/d' app/src/main/AndroidManifest.xml

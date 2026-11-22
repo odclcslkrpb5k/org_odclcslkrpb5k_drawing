@@ -1,0 +1,5 @@
+# Build warnings allowed by exact text (TS-18). One per line; each needs a reason line above it.
+# detekt 2.0.0-alpha.6's Gradle plugin calls Configuration.setVisible (DetektBasePlugin.kt:60).
+The Configuration.setVisible(boolean) method has been deprecated. This is scheduled to be removed in Gradle 11. Consult the upgrading guide for further information: https://docs.gradle.org/9.9.2/userguide/upgrading_version_9.html#deprecate-visible-property
+# detekt 2.0.0-alpha.6's Android task (app:detektDebug) reads its classpath without declaring it.
+Querying the output of an artifact transform from a task action without declaring it as a task input has been deprecated. This is scheduled to be removed in Gradle 10. Declare the files or artifacts produced by the configuration using the transform as a task input to properly wire it into the execution plan. Consult the upgrading guide for further information: https://docs.gradle.org/9.9.2/userguide/upgrading_version_9.html#undeclared_artifact_transform_input

@@ -1,0 +1,1 @@
+sed -i 's/^    data class Ok/        data class Ok/' core/src/main/kotlin/org/odclcslkrpb5k/drawing/core/Outcome.kt

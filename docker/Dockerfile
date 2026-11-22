@@ -33,7 +33,9 @@ COPY --chown=builder gradle gradle
 COPY --chown=builder core/build.gradle.kts core/
 COPY --chown=builder app/build.gradle.kts app/
 COPY --chown=builder app/src/main/AndroidManifest.xml app/src/main/
+COPY --chown=builder app/src/main/res app/src/main/res
 COPY --chown=builder tools/checks/warm tools/checks/
+COPY --chown=builder config config
 RUN tools/checks/warm
 
 COPY --chown=builder . /repo

@@ -1,0 +1,75 @@
+# Overrides on detekt's default configuration (buildUponDefaultConfig). Every finding is an error.
+config:
+  validation: true
+  warningsAsErrors: true
+
+potential-bugs:
+  # LN-3: a `when` over a sealed type or enum names every case; `else` does not count.
+  ElseCaseInsteadOfExhaustiveWhen:
+    active: true
+  # LN-2: no escape hatches, in tests as well as source (CP-2).
+  UnsafeCallOnNullableType:
+    active: true
+    excludes: []
+  UnsafeCast:
+    active: true
+  CastNullableToNonNullableType:
+    active: true
+    ignorePlatformTypes: false
+  CastToNullableType:
+    active: true
+  LateinitUsage:
+    active: true
+    excludes: []
+  NullableToStringCall:
+    active: true
+  DontDowncastCollectionTypes:
+    active: true
+  MissingUseCall:
+    active: true
+  UnnecessaryNotNullCheck:
+    active: true
+
+style:
+  # LN-8: suppressions are refused; a needed exception is a counted entry in tools/checks.
+  ForbiddenAnnotation:
+    active: true
+    annotations:
+      - reason: 'LN-8: no suppressions. Fix the finding, or argue an exception in tools/checks.'
+        value: 'kotlin.Suppress'
+      - reason: 'LN-8: no suppressions. Fix the finding, or argue an exception in tools/checks.'
+        value: 'android.annotation.SuppressLint'
+      - reason: 'LN-8: use kotlin.Suppress rules, which are refused too.'
+        value: 'java.lang.SuppressWarnings'
+  # ER-3, ER-4: APIs that throw are met only in adapters, which return Outcome.
+  ForbiddenImport:
+    active: true
+    excludes: ['**/adapters/**', '**/test/**', '**/androidTest/**']
+    forbiddenImports:
+      - reason: 'ER-3: file I/O throws; call it through an adapter that returns Outcome.'
+        value: 'java.io.*'
+      - reason: 'ER-3: file I/O throws; call it through an adapter that returns Outcome.'
+        value: 'java.nio.file.*'
+      - reason: 'ER-3: writes go through the atomic-file adapter.'
+        value: 'androidx.core.util.AtomicFile'
+      - reason: 'ER-3: writes go through the atomic-file adapter.'
+        value: 'android.util.AtomicFile'
+      - reason: 'ER-3: decoding throws and allocates; call it through an adapter.'
+        value: 'android.graphics.BitmapFactory'
+      - reason: 'ER-1: kotlin.Result carries only Throwable; use Outcome.'
+        value: 'kotlin.Result'
+  ForbiddenMethodCall:
+    active: true
+    methods:
+      - reason: 'DP-3 and the main thread: no console output; use the logging adapter.'
+        value: 'kotlin.io.print'
+      - reason: 'DP-3 and the main thread: no console output; use the logging adapter.'
+        value: 'kotlin.io.println'
+      - reason: 'Blocks a thread; schedule work instead.'
+        value: 'java.lang.Thread.sleep'
+      - reason: 'ER-1: kotlin.runCatching catches everything, including bugs; use an adapter.'
+        value: 'kotlin.runCatching'
+  ForbiddenComment:
+    active: true
+  UseCheckOrError:
+    active: true

@@ -1,11 +1,13 @@
 [versions]
 agp = "9.5.2"
-kotlin = "2.4.21"
+kotlin = "2.4.10"
 kotest = "6.2.7"
 core-ktx = "1.19.1"
 activity = "1.13.0"
 ink = "1.0.0"
 graphics-core = "1.0.4"
+detekt = "2.0.0-alpha.6"
+ktfmt = "0.64"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
@@ -15,8 +17,10 @@ ink-brush = { module = "androidx.ink:ink-brush", version.ref = "ink" }
 ink-strokes = { module = "androidx.ink:ink-strokes", version.ref = "ink" }
 ink-rendering = { module = "androidx.ink:ink-rendering", version.ref = "ink" }
 kotest-runner = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
+ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
 kotest-property = { module = "io.kotest:kotest-property", version.ref = "kotest" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+detekt = { id = "dev.detekt", version.ref = "detekt" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

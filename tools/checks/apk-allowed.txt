@@ -1,0 +1,10 @@
+# What the release APK may declare, read from the merged manifest by tools/checks/apk.
+# Each line: kind value. Reasons above each.
+#
+# AndroidX core's own signature-level permission for receivers it registers as not exported.
+uses-permission org.odclcslkrpb5k.drawing.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+#
+# The launcher entry point.
+exported activity org.odclcslkrpb5k.drawing.MainActivity
+# androidx.profileinstaller: callable only with android.permission.DUMP (adb shell).
+exported receiver androidx.profileinstaller.ProfileInstallReceiver

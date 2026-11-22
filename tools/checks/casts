@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# LN-2, BD-2: no unchecked `as` casts in Kotlin source. detekt's UnsafeCast reports only casts that
+# can never succeed, so this check refuses every `as` cast; `as?` (a checked test that yields null)
+# and `import ... as ...` are allowed. An exception is a line in tools/checks/allowed-casts.txt,
+# "path:count  reason", with the exact count of casts in that file.
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+status=0
+mapfile -d '' files < <(find app core -name '*.kt' -not -path '*/build/*' -print0 | sort -z)
+for f in "${files[@]}"; do
+  n=$( (grep -vE '^\s*(import |//|\*|/\*)' "$f" || true) | (grep -oE '\bas\s+[A-Za-z(]' || true) | wc -l)
+  allowed=$( (grep -E "^${f}:[0-9]+ " tools/checks/allowed-casts.txt || true) | sed -E 's/^[^:]+:([0-9]+) .*/\1/')
+  allowed=${allowed:-0}
+  if [ "$n" -ne "$allowed" ]; then
+    echo "casts: $f has $n unchecked 'as' cast(s), allowed $allowed (tools/checks/allowed-casts.txt)"
+    grep -nE '\bas\s+[A-Za-z(]' "$f" | grep -vE '^\d*:\s*import ' || true
+    status=1
+  fi
+done
+exit "$status"

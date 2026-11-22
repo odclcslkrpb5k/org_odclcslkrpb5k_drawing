@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Plants one bug per control in a copy of the tree and asserts the control refuses it, for the
+# stated reason (TS-5, TS-15). Runs in the check container, offline. Usage: plants [name...]
+set -euo pipefail
+root=$(cd "$(dirname "$0")/../.." && pwd)
+dir=$root/test-fixtures/plants
+mapfile -t names < <(if [ $# -gt 0 ]; then printf '%s\n' "$@"; else ls "$dir"; fi)
+failed=0
+for name in "${names[@]}"; do
+  plant=$dir/$name
+  work=$(mktemp -d)
+  # The copy has its own build directory, so no plant reads another tree's output (TS-8).
+  tar -C "$root" --exclude=./build --exclude=./.gradle -cf - . | tar -C "$work" -xf -
+  before=$(cd "$work" && find . -type f -not -path './test-fixtures/*' -exec sha256sum {} + | sort)
+  (cd "$work" && bash "$plant/apply")
+  after=$(cd "$work" && find . -type f -not -path './test-fixtures/*' -exec sha256sum {} + | sort)
+  if [ "$before" = "$after" ]; then
+    echo "PLANT $name: apply changed nothing"; failed=1; rm -rf "$work"; continue
+  fi
+  expect=$(cat "$plant/expect")
+  log=$work.log
+  if (cd "$work" && bash -c "$(cat "$plant/command")") >"$log" 2>&1; then
+    echo "PLANT $name: survived (command exited 0)"; failed=1
+  elif grep -qE -- "$expect" "$log"; then
+    echo "PLANT $name: caught"
+  else
+    echo "PLANT $name: failed for another reason (expected /$expect/):"; tail -30 "$log"; failed=1
+  fi
+  rm -rf "$work" "$log"
+done
+exit "$failed"

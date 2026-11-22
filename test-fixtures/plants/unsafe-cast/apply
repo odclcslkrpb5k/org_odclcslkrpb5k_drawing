@@ -1,0 +1,1 @@
+printf 'package org.odclcslkrpb5k.drawing.core\n\nfun plant(a: Any): Int = (a as String).length\n' >core/src/main/kotlin/org/odclcslkrpb5k/drawing/core/Plant.kt

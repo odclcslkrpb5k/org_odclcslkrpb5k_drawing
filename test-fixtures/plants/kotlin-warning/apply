@@ -1,0 +1,1 @@
+printf 'package org.odclcslkrpb5k.drawing.core\n\n@Deprecated("plant") fun old(): Int = 1\n\nfun plant(): Int = old()\n' >core/src/main/kotlin/org/odclcslkrpb5k/drawing/core/Plant.kt

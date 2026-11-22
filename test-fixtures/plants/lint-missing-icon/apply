@@ -1,0 +1,2 @@
+sed -i '/android:icon=/d' app/src/main/AndroidManifest.xml
+rm app/src/main/res/mipmap/ic_launcher.xml app/src/main/res/drawable/ic_launcher_*.xml

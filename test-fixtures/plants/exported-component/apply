@@ -1,0 +1,2 @@
+sed -i 's|^    </application>|        <service android:name=".PlantService" android:exported="true" />\n    </application>|' app/src/main/AndroidManifest.xml
+printf 'package org.odclcslkrpb5k.drawing\n\nclass PlantService : android.app.Service() {\n    override fun onBind(intent: android.content.Intent?): android.os.IBinder? = null\n}\n' >app/src/main/kotlin/org/odclcslkrpb5k/drawing/PlantService.kt

@@ -1,0 +1,1 @@
+printf '# plant\nA warning nothing emits.\n' >>tools/checks/allowed-warnings.txt

@@ -1,12 +1,32 @@
 #!/usr/bin/env bash
-# The one check command (TC-5): runs inside the check container, offline. Gradle prints only lint's
-# first finding, so the full lint report is printed whatever the outcome (AG-2).
+# The one check command (TC-5): runs inside the check container, offline.
+# - Gradle shows only lint's first finding, so every lint report is printed (AG-2).
+# - Every build warning fails the check unless allowed by exact text (TS-18).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+log=$(mktemp)
 status=0
-./gradlew --offline --no-daemon --console=plain test lint assembleRelease || status=$?
+tools/checks/casts || status=1
+./gradlew --offline --no-daemon --console=plain --warning-mode=all \
+  ktfmtCheck \
+  :core:detektMain :core:detektTest :app:detektMain :app:detektTest \
+  test lint assembleRelease 2>&1 | tee "$log" || status=$?
+[ "$status" -ne 0 ] || tools/checks/apk || status=1
+
 while IFS= read -r -d '' report; do
   echo "--- lint report: $report ---"
   cat "$report"
 done < <(find build -name 'lint-results-*.txt' -print0)
+
+allowed=$(mktemp)
+grep -v '^#' tools/checks/allowed-warnings.txt >"$allowed" || true
+warnings=$(grep -E 'deprecated|^w: |[Ww]arning:' "$log" | grep -vxF -f "$allowed" || true)
+if [ -n "$warnings" ]; then
+  echo "--- build warnings not in tools/checks/allowed-warnings.txt ---"
+  echo "$warnings"
+  [ "$status" -ne 0 ] || status=1
+fi
+while IFS= read -r want; do
+  grep -qxF -- "$want" "$log" || { echo "allowed warning no longer emitted, remove it: $want"; status=1; }
+done <"$allowed"
 exit "$status"

@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Reads the merged manifest of the built release APK, since libraries add permissions and components
+# silently, and fails on anything tools/checks/apk-allowed.txt does not list, and on any drift in
+# the SDK levels and the landscape lock the app relies on.
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+aapt2=$ANDROID_HOME/build-tools/36.1.0/aapt2
+mapfile -t apks < <(find build/app/outputs/apk/release -name '*.apk')
+[ "${#apks[@]}" -eq 1 ] || { echo "apk: expected exactly one release APK, found ${#apks[@]}"; exit 1; }
+apk=${apks[0]}
+status=0
+
+# One line per element of interest: "<kind> <name> exported=<bool> <attr>=<value>..."
+facts=$("$aapt2" dump xmltree --file AndroidManifest.xml "$apk" | awk '
+  function flush() { if (kind != "") print kind, name, "exported=" exported, extra; kind="" }
+  /^ *E: / { flush(); k=$2; if (k ~ /^(uses-permission|permission|activity|activity-alias|service|receiver|provider|property|uses-sdk)$/) { kind=k; name="-"; exported="false"; extra="" } }
+  /^ *A: / && kind != "" {
+    if ($0 ~ /android:name\(/) { match($0, /\(Raw: "[^"]*"/); name=substr($0, RSTART+7, RLENGTH-8) }
+    else if ($0 ~ /:exported\(/) { exported=($0 ~ /=true$/) ? "true" : "false" }
+    else { a=$0; sub(/^ *A: [^:]*:[^:]*:/, "", a); sub(/\(0x[0-9a-f]+\)/, "", a); sub(/ \(Raw:.*$/, "", a); extra=extra " " a }
+  }
+  END { flush() }')
+
+want() { grep -qxF -- "$1" <<<"$facts" || { echo "apk: missing: $1"; status=1; }; }
+want "uses-sdk - exported=false  minSdkVersion=35 targetSdkVersion=36"
+want "property android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY exported=false  value=true"
+grep -E '^activity org.odclcslkrpb5k.drawing.MainActivity ' <<<"$facts" | grep -q ' screenOrientation=6 ' \
+  || { echo "apk: MainActivity is not locked to sensorLandscape (6)"; status=1; }
+grep -E '^activity org.odclcslkrpb5k.drawing.MainActivity ' <<<"$facts" | grep -q ' resizeableActivity=false' \
+  || { echo "apk: MainActivity is resizeable"; status=1; }
+
+allowed=$(grep -vE '^(#|$)' tools/checks/apk-allowed.txt)
+actual=$( { awk '$1=="uses-permission" {print "uses-permission", $2}' <<<"$facts"
+            awk '$3=="exported=true" {print "exported", $1, $2}' <<<"$facts"; } | sort)
+unexpected=$(comm -13 <(sort <<<"$allowed") <(sort <<<"$actual"))
+missing=$(comm -23 <(sort <<<"$allowed") <(sort <<<"$actual"))
+[ -z "$unexpected" ] || { echo "apk: not in tools/checks/apk-allowed.txt:"; echo "$unexpected"; status=1; }
+[ -z "$missing" ] || { echo "apk: allowed but no longer present, remove it:"; echo "$missing"; status=1; }
+[ "$status" -ne 0 ] || echo "apk: $(wc -l <<<"$actual") permission/export entries, all allowed"
+exit "$status"

@@ -1,0 +1,1 @@
+sed -i 's|^    testImplementation(libs.kotest.runner)|    implementation("org.apache.commons:commons-lang3:3.17.0")\n    testImplementation(libs.kotest.runner)|' core/build.gradle.kts

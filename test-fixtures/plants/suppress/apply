@@ -1,0 +1,1 @@
+printf 'package org.odclcslkrpb5k.drawing.core\n\n@Suppress("MagicNumber") fun plant(): Int = 42 + 1\n' >core/src/main/kotlin/org/odclcslkrpb5k/drawing/core/Plant.kt

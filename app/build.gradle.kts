@@ -1,4 +1,7 @@
-plugins { alias(libs.plugins.android.application) }
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.detekt)
+}
 
 android {
     namespace = "org.odclcslkrpb5k.drawing"
@@ -15,7 +18,6 @@ android {
         warningsAsErrors = true
         checkAllWarnings = true
         checkReleaseBuilds = true
-        textReport = true
         // API 37 removes the large-screen orientation opt-out the drawing app relies on; see the
         // workspace decisions (2026-11-21). Listed in the suppression check's counted exceptions.
         disable += "OldTargetApi"
@@ -27,6 +29,11 @@ kotlin {
     compilerOptions {
         allWarningsAsErrors = true
     }
+}
+
+detekt {
+    buildUponDefaultConfig = true
+    config.setFrom(rootProject.file("config/detekt/detekt.yml"))
 }
 
 dependencies {

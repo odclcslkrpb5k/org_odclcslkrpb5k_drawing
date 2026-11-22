@@ -1,0 +1,1 @@
+printf 'package org.odclcslkrpb5k.drawing.core\n\nfun plant(o: Outcome<Int, String>): Int =\n    when (o) {\n        is Outcome.Ok -> o.value\n        else -> 0\n    }\n' >core/src/main/kotlin/org/odclcslkrpb5k/drawing/core/Plant.kt
