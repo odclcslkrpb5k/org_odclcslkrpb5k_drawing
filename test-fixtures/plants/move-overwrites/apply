@@ -1,0 +1,1 @@
+perl -0pi -e 's/done\.lastOrNull\(\)\s*==\s*Op\.AddStamp\(from\)/done.isNotEmpty()/' core/src/main/kotlin/org/odclcslkrpb5k/drawing/core/History.kt

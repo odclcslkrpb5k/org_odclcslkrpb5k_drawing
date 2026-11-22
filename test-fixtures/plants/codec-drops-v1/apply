@@ -1,0 +1,1 @@
+sed -i 's/private const val OLDEST_READABLE = 1/private const val OLDEST_READABLE = 2/' core/src/main/kotlin/org/odclcslkrpb5k/drawing/core/PageCodec.kt

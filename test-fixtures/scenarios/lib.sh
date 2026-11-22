@@ -73,3 +73,13 @@ inked_column() {
 NEW_TILE="246 167"
 SECOND_TILE="702 167"
 HOME_BUTTON="84 102"
+# The drawing screen's left rail, top to bottom after a spacer: stamps, undo, redo; and the stamp
+# tray's first face (happy), beside the rail.
+STAMPS_BUTTON="84 762"
+UNDO_BUTTON="84 930"
+REDO_BUTTON="84 1098"
+HAPPY_FACE="270 348"
+SAD_FACE="438 348"
+
+# A one-finger drag from (x1,y1) to (x2,y2), as one adb shell command.
+drag() { stroke "$@"; }

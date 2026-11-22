@@ -40,7 +40,25 @@ fun arbStroke(): Arb<StrokeData> =
         StrokeData(BrushSpec(k, Argb(c), s), pts)
     }
 
-fun arbHistory(): Arb<History> =
+fun arbStamp(): Arb<StampData> =
+    Arb.bind(
+        Arb.enum<Stamp>(),
+        finite(0f, Page.WIDTH),
+        finite(0f, Page.HEIGHT),
+        finite(StampData.MIN_SIZE, StampData.MAX_SIZE),
+    ) { face, x, y, size ->
+        StampData(face, x, y, size)
+    }
+
+fun arbOp(): Arb<Op> =
+    Arb.bind(arbStroke(), arbStamp(), Arb.int(0, 3)) { stroke, stamp, pick ->
+        if (pick == 0) Op.AddStamp(stamp) else Op.AddStroke(stroke)
+    }
+
+fun arbHistory(): Arb<History> = Arb.list(arbOp(), 0..MAX_STROKES).map { History(it) }
+
+/** A page of strokes only, as version 1 could hold. */
+fun arbStrokesOnly(): Arb<History> =
     Arb.list(arbStroke(), 0..MAX_STROKES).map { strokes ->
         History(strokes.map { Op.AddStroke(it) })
     }

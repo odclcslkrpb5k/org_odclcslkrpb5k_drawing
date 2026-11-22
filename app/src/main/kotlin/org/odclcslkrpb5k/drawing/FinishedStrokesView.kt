@@ -1,7 +1,6 @@
 package org.odclcslkrpb5k.drawing
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
@@ -9,7 +8,6 @@ import android.graphics.Paint
 import android.util.Log
 import android.view.View
 import androidx.core.graphics.createBitmap
-import androidx.core.graphics.scale
 import androidx.ink.rendering.android.canvas.CanvasStrokeRenderer
 import org.odclcslkrpb5k.drawing.adapters.InkStrokes
 import org.odclcslkrpb5k.drawing.core.Outcome
@@ -55,8 +53,10 @@ class FinishedStrokesView(context: Context) : View(context) {
         }
     }
 
-    /** The page scaled down for the gallery. */
-    fun thumbnail(): Bitmap = page.scale(page.width / THUMB_SCALE, page.height / THUMB_SCALE)
+    /** Draws the page, in page units, onto [canvas] (a thumbnail's). */
+    fun drawPage(canvas: Canvas) {
+        canvas.drawBitmap(page, 0f, 0f, scaled)
+    }
 
     override fun onDraw(canvas: Canvas) {
         canvas.drawBitmap(page, pageToView, scaled)
@@ -64,6 +64,5 @@ class FinishedStrokesView(context: Context) : View(context) {
 
     private companion object {
         const val TAG = "FinishedStrokes"
-        const val THUMB_SCALE = 6
     }
 }

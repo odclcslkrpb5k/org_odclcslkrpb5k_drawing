@@ -1,0 +1,1 @@
+sed -i 's/if (r.remaining() < STAMP_BODY_BYTES) return/if (r.remaining() < STAMP_BODY_BYTES - 1) return/' core/src/main/kotlin/org/odclcslkrpb5k/drawing/core/PageCodec.kt

@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# A stamp: chosen from the tray, placed by a tap, moved by a drag while selected; one undo takes it
+# away entirely (the move is part of placing it), redo brings it back where it was moved, and it is
+# still there after leaving and reopening the page.
+set -euo pipefail
+. "$(dirname "$0")/lib.sh"
+adb shell am start -W -n $pkg/.MainActivity >/dev/null
+sleep 2
+tap $NEW_TILE
+sleep 2
+tap $STAMPS_BUTTON
+sleep 1
+tap $HAPPY_FACE
+sleep 1
+tap 900 600
+sleep 1
+capture stamp-placed
+inked 900 600 || { echo "scenario: no stamp where it was placed"; exit 1; }
+adb shell "$(drag 900 600 1300 850)"
+sleep 1
+capture stamp-moved
+failed=0
+inked 1300 850 || { echo "scenario: the stamp did not follow the drag"; failed=1; }
+inked 900 600 && { echo "scenario: the stamp is still where it was placed"; failed=1; }
+tap $UNDO_BUTTON
+sleep 1
+capture stamp-undone
+inked 1300 850 && { echo "scenario: one undo left the moved stamp"; failed=1; }
+inked 900 600 && { echo "scenario: one undo left the stamp where it was placed"; failed=1; }
+tap $REDO_BUTTON
+sleep 1
+# A face can be put down and slid in one motion: it ends where the finger lifts.
+tap $STAMPS_BUTTON
+sleep 1
+tap $SAD_FACE
+sleep 1
+adb shell "$(drag 600 350 600 750)"
+sleep 1
+capture stamp-slid
+inked 600 750 || { echo "scenario: a face placed and slid in one touch did not follow"; failed=1; }
+inked 600 350 && { echo "scenario: a face placed and slid in one touch stayed where it landed"; failed=1; }
+adb shell "input tap $HOME_BUTTON"
+sleep 2
+capture stamp-home
+# The gallery tile shows the moved happy face: page (1352,899) in the tile's thumbnail.
+inked_column 779 220 232 || { echo "scenario: the gallery tile does not show the stamp"; failed=1; }
+tap $SECOND_TILE
+sleep 3
+capture stamp-reopened
+inked 1300 850 || { echo "scenario: the stamp did not survive leaving and reopening"; failed=1; }
+no_errors
+[ "$failed" -eq 0 ] || exit 1
+echo "scenario stamps: placed, moved, undone as one step, redone, kept"

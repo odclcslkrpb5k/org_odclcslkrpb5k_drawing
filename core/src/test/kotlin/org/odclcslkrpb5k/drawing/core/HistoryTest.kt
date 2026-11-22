@@ -1,6 +1,7 @@
 package org.odclcslkrpb5k.drawing.core
 
 import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 import io.kotest.property.checkAll
 
 class HistoryTest :
@@ -29,9 +30,31 @@ class HistoryTest :
             }
         }
 
+        "moving the stamp just placed replaces it, so one undo takes it away" {
+            checkAll(arbHistory(), arbStamp(), arbStamp()) { page, placed, moved ->
+                val after = page.apply(Op.AddStamp(placed)).moveStamp(placed, moved)
+                after.stamps.last() shouldBe moved
+                after.undo().done shouldBe page.done
+            }
+        }
+
+        "a move never overwrites an operation that is not the stamp being moved" {
+            checkAll(arbHistory(), arbStamp(), arbStamp(), arbStroke()) {
+                page,
+                placed,
+                moved,
+                stroke ->
+                val strokeSince = page.apply(Op.AddStamp(placed)).apply(Op.AddStroke(stroke))
+                strokeSince.moveStamp(placed, moved) shouldBe strokeSince
+                val undoneSince = page.apply(Op.AddStamp(placed)).undo()
+                undoneSince.moveStamp(placed, moved) shouldBe undoneSince
+            }
+        }
+
         "the strokes are the done operations, in order" {
             checkAll(arbHistory()) { page ->
-                check(page.strokes == page.done.map { (it as? Op.AddStroke)?.stroke })
+                check(page.strokes == page.done.mapNotNull { (it as? Op.AddStroke)?.stroke })
+                check(page.stamps == page.done.mapNotNull { (it as? Op.AddStamp)?.stamp })
             }
         }
     })

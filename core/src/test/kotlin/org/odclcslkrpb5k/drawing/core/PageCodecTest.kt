@@ -63,6 +63,58 @@ class PageCodecTest :
             checkAll(arbStroke()) { it.isSaveable() shouldBe true }
         }
 
+        "every generated stamp is saveable" {
+            checkAll(arbStamp()) { it.isSaveable() shouldBe true }
+        }
+
+        "a version 1 file, written byte by byte as version 1 wrote it, opens" {
+            val v1 =
+                java.nio.ByteBuffer.allocate(4 + 2 + 4 + 1 + 1 + 4 + 4 + 4 + (4 + 4 + 8 + 4))
+                    .order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                    .putInt(0x5752444F)
+                    .putShort(1)
+                    .putInt(1)
+                    .put(1)
+                    .put(BrushKind.MARKER.ordinal.toByte())
+                    .putInt(0xFF336699.toInt())
+                    .putFloat(12f)
+                    .putInt(1)
+                    .putFloat(10f)
+                    .putFloat(20f)
+                    .putLong(5L)
+                    .putFloat(-1f)
+                    .array()
+            val stroke =
+                StrokeData(
+                    BrushSpec(BrushKind.MARKER, Argb(0xFF336699.toInt()), 12f),
+                    listOf(InputPoint(10f, 20f, 5L, -1f)),
+                )
+            PageCodec.decode(v1) shouldBe Outcome.Ok(History(listOf(Op.AddStroke(stroke))))
+        }
+
+        "a page saved by version 1, strokes only, still opens" {
+            checkAll(arbStrokesOnly()) { page ->
+                val bytes = PageCodec.encode(page)
+                bytes[4] = 1
+                PageCodec.decode(bytes) shouldBe Outcome.Ok(page)
+            }
+        }
+
+        "a stamp in a version 1 page is refused, since version 1 had none" {
+            val stamp = StampData(Stamp.HAPPY, 100f, 100f, StampData.DEFAULT_SIZE)
+            val bytes = PageCodec.encode(History(listOf(Op.AddStamp(stamp))))
+            bytes[4] = 1
+            PageCodec.decode(bytes) shouldBe Outcome.Err(DecodeError.OUT_OF_RANGE)
+        }
+
+        "a stamp that is not saveable is refused" {
+            for (bad in listOf(Float.NaN, StampData.MAX_SIZE * 2, StampData.MIN_SIZE / 2)) {
+                val stamp = StampData(Stamp.LOVE, 100f, 100f, bad)
+                PageCodec.decode(PageCodec.encode(History(listOf(Op.AddStamp(stamp))))) shouldBe
+                    Outcome.Err(DecodeError.OUT_OF_RANGE)
+            }
+        }
+
         "arbitrary bytes never throw" {
             checkAll(Arb.byteArray(Arb.int(0, 256), Arb.byte())) { bytes ->
                 PageCodec.decode(bytes)
@@ -71,7 +123,7 @@ class PageCodecTest :
 
         "another version is refused by name" {
             val bytes = PageCodec.encode(History())
-            bytes[4] = 2
+            bytes[4] = (PageCodec.VERSION + 1).toByte()
             PageCodec.decode(bytes) shouldBe Outcome.Err(DecodeError.UNKNOWN_VERSION)
         }
 

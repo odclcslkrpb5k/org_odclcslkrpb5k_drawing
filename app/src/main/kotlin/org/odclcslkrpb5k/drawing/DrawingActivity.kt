@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.Gravity
 import android.view.View
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.window.OnBackInvokedDispatcher
 import org.odclcslkrpb5k.drawing.adapters.InkLoader
@@ -46,6 +47,7 @@ class DrawingActivity : Activity() {
     private val id by lazy { intent.getStringExtra(EXTRA_PAGE)?.let(PageId::parse) }
     private var opened: PageId? = null
     private val swatches = mutableListOf<View>()
+    private val stamps by lazy { StampTray(this) { face -> surface.arm(face) } }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -103,38 +105,70 @@ class DrawingActivity : Activity() {
         }
     }
 
-    private fun layout(): View {
-        val tools =
-            LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER_HORIZONTAL
-                setPadding(dp(PAD), dp(PAD), dp(PAD), dp(PAD))
-                addView(iconButton(R.drawable.ic_home, "home") { leave() }, square())
-                addView(View(context), LinearLayout.LayoutParams(1, 0, 1f))
-                addView(iconButton(R.drawable.ic_undo, "undo") { surface.undo() }, square())
-                addView(iconButton(R.drawable.ic_redo, "redo") { surface.redo() }, square())
-            }
-        val colors =
-            LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(PAD), dp(PAD), dp(PAD), dp(PAD))
-                for (argb in SWATCHES) {
-                    val swatch = View(context)
-                    swatch.background = swatchShape(argb.toInt(), selected = false)
-                    swatch.contentDescription = "color"
-                    swatch.setOnClickListener { pick(swatch, Argb(argb.toInt())) }
-                    swatches += swatch
-                    addView(swatch, LinearLayout.LayoutParams(dp(SWATCH), 0, 1f))
-                }
-            }
-        pick(swatches[SWATCHES.indexOf(DEFAULT)], Argb(DEFAULT.toInt()))
-        return LinearLayout(this).apply {
-            setBackgroundColor(BACKGROUND)
-            addView(tools, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, MATCH))
-            addView(surface, LinearLayout.LayoutParams(0, MATCH, 1f))
+    /** Home at the top; stamps, undo and redo at the bottom, under the child's hand. */
+    private fun toolsRail(): View =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(PAD), dp(PAD), dp(PAD), dp(PAD))
             addView(
-                colors,
-                LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, MATCH),
+                iconButton(R.drawable.ic_home, "home") { stamps.close().also { leave() } },
+                square(),
+            )
+            addView(View(context), LinearLayout.LayoutParams(1, 0, 1f))
+            addView(stamps.button, square())
+            addView(
+                iconButton(R.drawable.ic_undo, "undo") { stamps.close().also { surface.undo() } },
+                square(),
+            )
+            addView(
+                iconButton(R.drawable.ic_redo, "redo") { stamps.close().also { surface.redo() } },
+                square(),
+            )
+        }
+
+    /** One swatch per color, filling the right edge from top to bottom. */
+    private fun colorsRail(): View =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(PAD), dp(PAD), dp(PAD), dp(PAD))
+            for (argb in SWATCHES) {
+                val swatch = View(context)
+                swatch.background = swatchShape(argb.toInt(), selected = false)
+                swatch.contentDescription = "color"
+                swatch.setOnClickListener { pick(swatch, Argb(argb.toInt())) }
+                swatches += swatch
+                addView(swatch, LinearLayout.LayoutParams(dp(SWATCH), 0, 1f))
+            }
+        }
+
+    private fun layout(): View {
+        val tools = toolsRail()
+        surface.onArmed = { face -> stamps.showArmed(face) }
+        surface.onTouched = { stamps.close() }
+        val colors = colorsRail()
+        pick(swatches[SWATCHES.indexOf(DEFAULT)], Argb(DEFAULT.toInt()))
+        val row =
+            LinearLayout(this).apply {
+                setBackgroundColor(BACKGROUND)
+                addView(
+                    tools,
+                    LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, MATCH),
+                )
+                addView(surface, LinearLayout.LayoutParams(0, MATCH, 1f))
+                addView(
+                    colors,
+                    LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, MATCH),
+                )
+            }
+        return FrameLayout(this).apply {
+            addView(row)
+            addView(
+                stamps.tray,
+                FrameLayout.LayoutParams(WRAP, WRAP, Gravity.START or Gravity.CENTER_VERTICAL)
+                    .apply {
+                        marginStart = dp(TARGET_DP + 2 * PAD)
+                    },
             )
         }
     }
@@ -145,6 +179,7 @@ class DrawingActivity : Activity() {
         }
 
     private fun pick(swatch: View, color: Argb) {
+        stamps.close()
         surface.color = color
         swatches.forEachIndexed { i, v ->
             v.background = swatchShape(SWATCHES[i].toInt(), v === swatch)
@@ -186,6 +221,7 @@ class DrawingActivity : Activity() {
         private const val SWATCH = 72
         private const val SELECTED_RING = 5
         private const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
+        private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
         private const val BACKGROUND = 0xFFF4EEFF.toInt()
         private const val EDGE = 0xFFBDBDBD.toInt()
         private const val DEFAULT = 0xFF7A4BE0

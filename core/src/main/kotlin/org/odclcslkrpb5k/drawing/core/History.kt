@@ -4,6 +4,9 @@ package org.odclcslkrpb5k.drawing.core
 sealed interface Op {
     /** A finished stroke. */
     data class AddStroke(val stroke: StrokeData) : Op
+
+    /** A stamp placed on the page. */
+    data class AddStamp(val stamp: StampData) : Op
 }
 
 /**
@@ -23,11 +26,22 @@ data class History(val done: List<Op> = emptyList(), val undone: List<Op> = empt
 
     /** The strokes on the page, oldest first. */
     val strokes: List<StrokeData>
-        get() = done.map { op ->
-            when (op) {
-                is Op.AddStroke -> op.stroke
-            }
-        }
+        get() = done.filterIsInstance<Op.AddStroke>().map { it.stroke }
+
+    /** The stamps on the page, oldest first; they are drawn above every stroke. */
+    val stamps: List<StampData>
+        get() = done.filterIsInstance<Op.AddStamp>().map { it.stamp }
+
+    /**
+     * Moves the stamp placed last: a stamp still being moved or sized is one operation with its
+     * placing, so one undo takes it away. Only when the newest operation is exactly [from] is it
+     * replaced; anything else (a stroke landed since, an undo) leaves the page unchanged, so a move
+     * can never overwrite another operation.
+     */
+    fun moveStamp(from: StampData, to: StampData): History =
+        if (done.lastOrNull() == Op.AddStamp(from))
+            History(done.dropLast(1) + Op.AddStamp(to), emptyList())
+        else this
 
     fun apply(op: Op): History = History(done + op, emptyList())
 

@@ -5,6 +5,9 @@ set -uo pipefail
 # It overwrites and then deletes core/src and app/src/main/kotlin, so it runs only in the image build.
 [ "${WARM_IN_IMAGE_BUILD:-}" = 1 ] || { echo "warm: refusing to run outside the image build" >&2; exit 2; }
 cd "$(dirname "$0")/../.."
+# The Gradle distribution itself must arrive: without it every later step fails in a confusing
+# way, and the image would look built. This one failure stops the image build.
+./gradlew --no-daemon --version >/dev/null || { echo "warm: the Gradle distribution could not be fetched" >&2; exit 1; }
 mkdir -p core/src/main/kotlin core/src/test/kotlin app/src/main/kotlin/org/odclcslkrpb5k/drawing
 printf 'package warm\n\nfun warm(): Int = 1\n' >core/src/main/kotlin/Warm.kt
 printf 'package warm\n\nimport io.kotest.core.spec.style.StringSpec\n\nclass WarmTest : StringSpec({ "w" { check(warm() == 1) } })\n' >core/src/test/kotlin/WarmTest.kt
