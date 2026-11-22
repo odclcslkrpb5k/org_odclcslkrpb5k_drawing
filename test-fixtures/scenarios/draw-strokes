@@ -1,38 +1,20 @@
 #!/usr/bin/env bash
-# Draws three finger strokes back to back, in one shell, so a stroke starts before Ink has handed
-# the previous one back; then every stroke must be on the page, read from the screen's pixels.
+# Opens a new page and draws three finger strokes back to back, in one shell, so a stroke starts
+# before Ink has handed the previous one back; every stroke must then be on the screen's pixels.
 set -euo pipefail
-pkg=org.odclcslkrpb5k.drawing
+. "$(dirname "$0")/lib.sh"
 adb shell am start -W -n $pkg/.MainActivity >/dev/null
 sleep 2
-stroke() {
-  local cmd="input motionevent DOWN $1 $2" i
-  for i in $(seq 1 20); do
-    cmd+="; input motionevent MOVE $(($1 + ($3 - $1) * i / 20)) $(($2 + ($4 - $2) * i / 20))"
-  done
-  printf '%s; input motionevent UP %s %s' "$cmd" "$3" "$4"
-}
-adb shell "$(stroke 300 300 1500 400); $(stroke 300 600 1500 700); $(stroke 900 200 1000 1000)"
+tap 246 167 # the "new page" tile
 sleep 2
-adb exec-out screencap -p >"$OUT_DIR/draw-strokes.png"
-raw=$OUT_DIR/draw-strokes.raw
-adb exec-out screencap >"$raw"
-adb logcat -d >"$OUT_DIR/logcat.txt"
-
-# The raw capture is a header, then 1920x1200 RGBA pixels.
-width=1920 height=1200
-header=$(( $(stat -c %s "$raw") - width * height * 4 ))
-[ "$header" -ge 12 ] && [ "$header" -le 16 ] || { echo "scenario: unexpected capture size"; exit 1; }
-pixel() { dd if="$raw" bs=1 skip=$(( header + ($2 * width + $1) * 4 )) count=3 status=none | od -An -tu1; }
-inked() { local r g b; read -r r g b <<<"$(pixel "$1" "$2")"; [ "$r" -lt 200 ] || [ "$g" -lt 200 ] || [ "$b" -lt 200 ]; }
+adb shell "$(stroke 400 300 1500 400); $(stroke 400 700 1500 800); $(stroke 900 200 1000 1000)"
+sleep 2
+capture draw-strokes
 failed=0
-inked 100 100 && { echo "scenario: (100,100) should be blank paper"; failed=1; }
-inked 900 350 || { echo "scenario: stroke 1 missing at (900,350)"; failed=1; }
-inked 900 650 || { echo "scenario: stroke 2 missing at (900,650)"; failed=1; }
+inked 1850 1195 && { echo "scenario: the color rail's bottom padding should be background"; failed=1; }
+inked 950 350 || { echo "scenario: stroke 1 missing at (950,350)"; failed=1; }
+inked 950 750 || { echo "scenario: stroke 2 missing at (950,750)"; failed=1; }
 inked 950 600 || { echo "scenario: stroke 3 missing at (950,600)"; failed=1; }
-if grep -E 'InkInProgressShape: Error|FinishedStrokes: stroke not rendered|AndroidRuntime: FATAL' "$OUT_DIR/logcat.txt"; then
-  echo "scenario: a stroke failed to draw (above)"; failed=1
-fi
-[ -n "$(adb shell pidof $pkg | tr -d '\r')" ] || { echo "scenario: app is not running"; failed=1; }
+no_errors
 [ "$failed" -eq 0 ] || exit 1
-echo "scenario draw-strokes: three strokes on the page, paper blank elsewhere"
+echo "scenario draw-strokes: three strokes on the page"

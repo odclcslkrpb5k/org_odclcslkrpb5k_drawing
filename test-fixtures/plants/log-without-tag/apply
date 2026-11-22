@@ -1,0 +1,1 @@
+sed -i 's/Log.w(TAG, "thumbnail failed/Log.w("Other", "thumbnail failed/' app/src/main/kotlin/org/odclcslkrpb5k/drawing/adapters/PageStore.kt

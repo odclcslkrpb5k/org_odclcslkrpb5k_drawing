@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Every scenario, in one emulator boot; each starts from a freshly installed app.
+set -euo pipefail
+dir=$(dirname "$0")
+for s in draw-strokes survives-kill reopen-at-once; do
+  adb shell pm clear org.odclcslkrpb5k.drawing >/dev/null
+  adb logcat -c
+  bash "$dir/$s"
+done

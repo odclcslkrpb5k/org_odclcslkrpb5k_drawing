@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# A page reopened the moment it is left still has everything: draw, go home, reopen at once, draw
+# again, go home, reopen; both strokes are there (a reopen must read after the last save).
+set -euo pipefail
+. "$(dirname "$0")/lib.sh"
+adb shell am start -W -n $pkg/.MainActivity >/dev/null
+sleep 2
+tap $NEW_TILE
+sleep 2
+# Home lays out its tiles once the queued save is written; a second is enough for that, and far
+# less than a child takes, while the reopen still races the page's save.
+adb shell "$(stroke 500 400 1300 450); input tap $HOME_BUTTON; sleep 1; input tap $SECOND_TILE"
+sleep 2
+adb shell "$(stroke 500 800 1300 850); input tap $HOME_BUTTON; sleep 1; input tap $SECOND_TILE"
+sleep 3
+capture reopen-at-once
+failed=0
+inked_column 900 400 460 || { echo "scenario: the first stroke is gone"; failed=1; }
+inked_column 900 800 860 || { echo "scenario: the second stroke is gone"; failed=1; }
+no_errors
+[ "$failed" -eq 0 ] || exit 1
+echo "scenario reopen-at-once: both strokes survived leaving and reopening at once"

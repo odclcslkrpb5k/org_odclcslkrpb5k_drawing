@@ -30,6 +30,8 @@ kotlin {
     jvmToolchain(21)
     compilerOptions {
         allWarningsAsErrors = true
+        // LN-6: a result left unused is an error here too (an ignored Outcome hides a failure).
+        freeCompilerArgs.add("-Xreturn-value-checker=full")
     }
 }
 

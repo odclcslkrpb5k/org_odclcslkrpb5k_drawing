@@ -31,6 +31,10 @@ potential-bugs:
     active: true
 
 style:
+  # A parser refuses bad input with an early return at each check (BD-1); those are guard clauses.
+  ReturnCount:
+    active: true
+    excludeGuardClauses: true
   # LN-8: suppressions are refused; a needed exception is a counted entry in tools/checks.
   ForbiddenAnnotation:
     active: true
@@ -73,3 +77,15 @@ style:
     active: true
   UseCheckOrError:
     active: true
+
+complexity:
+  # A View must override framework methods; count only the functions the class chose to have.
+  TooManyFunctions:
+    active: true
+    ignoreOverridden: true
+
+exceptions:
+  # ER-5: the disk thread's one counted catch-all lives in PageDisk; nowhere else catches broadly.
+  TooGenericExceptionCaught:
+    active: true
+    excludes: ['**/PageDisk.kt']

@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Every Log call in the app names its class's TAG constant, so the emulator scenarios, which read
+# the app's tags from `const val TAG = "..."`, see every warning the app can log. Whole files are
+# read, since the formatter may break a call after its opening parenthesis.
+set -euo pipefail
+export LC_ALL=C
+cd "$(dirname "$0")/../.."
+found=$(find app/src/main -name '*.kt' -print0 | xargs -0 perl -0ne '
+  while (/Log\.[vdiwef]\(\s*+(?!TAG\s*,)/g) { my $line = 1 + (substr($_, 0, pos($_)) =~ tr/\n//); print "$ARGV:$line\n" }')
+[ -z "$found" ] || { echo "logtags: Log calls that do not use TAG:"; echo "$found"; exit 1; }
+calls=$(find app/src/main -name '*.kt' -print0 | xargs -0 perl -0ne '$n += () = /Log\.[vdiwef]\(\s*TAG\s*,/g; END { print $n + 0 }')
+echo "logtags: $calls Log calls, all through TAG"

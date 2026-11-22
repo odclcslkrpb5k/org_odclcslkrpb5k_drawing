@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# A drawing survives the app being killed: draw, wait for the autosave, force-stop the process (as
+# Android does to a background app), relaunch, open the drawing from home; the stroke is there.
+set -euo pipefail
+. "$(dirname "$0")/lib.sh"
+adb shell am start -W -n $pkg/.MainActivity >/dev/null
+sleep 2
+tap 246 167 # the "new page" tile
+sleep 2
+adb shell "$(stroke 500 500 1300 600)"
+sleep 2
+adb shell am force-stop $pkg
+adb shell am start -W -n $pkg/.MainActivity >/dev/null
+sleep 3
+capture home
+inked_column 685 60 280 || { echo "scenario: no thumbnail for the drawing on the home screen"; exit 1; }
+tap 702 167 # the drawing's tile, after "new page"
+sleep 3
+capture reopened
+inked 900 550 || { echo "scenario: the stroke did not survive the kill"; exit 1; }
+no_errors
+echo "scenario survives-kill: the drawing came back after the process was killed"
