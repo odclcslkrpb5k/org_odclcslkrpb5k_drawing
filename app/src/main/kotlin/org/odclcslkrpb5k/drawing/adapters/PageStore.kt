@@ -23,14 +23,13 @@ enum class StoreError {
  * Pages on disk: the only code that touches the files (ER-3). Each page is a directory under
  * `drawings/` holding its newest [KEEP] saved versions, each written atomically (`tryWrite`
  * finishes the write, or fails it and leaves the old file, whatever is thrown); Auto Backup carries
- * `drawings/` (data_extraction_rules.xml). Thumbnails live in `thumbs/` and trashed pages in
- * `trash/`, both outside the backup. A directory that cannot be listed is an error, never an empty
+ * `drawings/` (data_extraction_rules.xml). Thumbnails live in `thumbs/`, outside the backup;
+ * trashed pages are [PageTrash]'s. A directory that cannot be listed is an error, never an empty
  * page: an empty page would be saved over the real one.
  */
 class PageStore(filesDir: File) {
-    private val pages = File(filesDir, "drawings")
-    private val thumbs = File(filesDir, "thumbs")
-    private val trash = File(filesDir, "trash")
+    internal val pages = File(filesDir, "drawings")
+    internal val thumbs = File(filesDir, "thumbs")
 
     /** Saved pages with at least one version, newest first. */
     fun list(): List<PageId> =
@@ -90,32 +89,37 @@ class PageStore(filesDir: File) {
      */
     fun load(id: PageId): Outcome<History, StoreError> {
         val versions = versions(File(pages, id.value)) ?: return io("list")
-        for ((n, file) in versions) {
-            val page =
-                try {
-                    PageCodec.decode(AtomicFile(file).readFully())
-                } catch (e: IOException) {
-                    Log.w(TAG, "version $n unreadable: ${e.javaClass.simpleName}")
-                    null
-                }
-            when (page) {
-                is Outcome.Ok -> return page
-                is Outcome.Err -> Log.w(TAG, "version $n does not decode: ${page.error}")
-                null -> Unit
-            }
+        for ((n, file) in versions) read(n, file)?.let {
+            return Outcome.Ok(it)
         }
         return Outcome.Err(StoreError.NO_READABLE_VERSION)
     }
 
-    /** Moves a page and its thumbnail to the trash; only the parent can empty it. */
-    fun trash(id: PageId): Outcome<Unit, StoreError> {
-        val moved =
-            (trash.isDirectory || trash.mkdirs()) &&
-                File(pages, id.value).renameTo(File(trash, id.value))
-        if (!moved) return io("trash")
-        val thumb = thumbFile(id)
-        if (thumb.exists() && !thumb.delete()) Log.w(TAG, "thumbnail of a trashed page not deleted")
-        return Outcome.Ok(Unit)
+    /** One version file decoded, or null (logged) when it cannot be read or does not decode. */
+    private fun read(n: Long, file: File): History? {
+        val page =
+            try {
+                PageCodec.decode(AtomicFile(file).readFully())
+            } catch (e: IOException) {
+                Log.w(TAG, "version $n unreadable: ${e.javaClass.simpleName}")
+                return null
+            }
+        return when (page) {
+            is Outcome.Ok -> page.value
+            is Outcome.Err -> {
+                Log.w(TAG, "version $n does not decode: ${page.error}")
+                null
+            }
+        }
+    }
+
+    /**
+     * The page's saved versions, newest first, by number, each decoded or null when it does not
+     * read back whole (the parent sees it, and cannot restore it).
+     */
+    fun versions(id: PageId): Outcome<List<Pair<Long, History?>>, StoreError> {
+        val versions = versions(File(pages, id.value)) ?: return io("list")
+        return Outcome.Ok(versions.map { (n, file) -> n to read(n, file) })
     }
 
     fun saveThumbnail(id: PageId, bitmap: Bitmap): Outcome<Unit, StoreError> =
@@ -131,10 +135,9 @@ class PageStore(filesDir: File) {
         }
 
     /** The page's thumbnail, or null when it has none yet. */
-    fun thumbnail(id: PageId): Bitmap? =
-        thumbFile(id).takeIf { it.isFile }?.let { BitmapFactory.decodeFile(it.path) }
+    fun thumbnail(id: PageId): Bitmap? = decodePng(thumbFile(id))
 
-    private fun thumbFile(id: PageId) = File(thumbs, "${id.value}.png")
+    internal fun thumbFile(id: PageId) = File(thumbs, "${id.value}.png")
 
     private fun io(what: String): Outcome.Err<StoreError> {
         Log.w(TAG, "$what failed")
@@ -159,3 +162,7 @@ class PageStore(filesDir: File) {
         val VERSION = Regex("v([0-9]{1,18})\\.page")
     }
 }
+
+/** A PNG file decoded, or null when there is none (or it does not decode). */
+internal fun decodePng(file: File): Bitmap? =
+    file.takeIf { it.isFile }?.let { BitmapFactory.decodeFile(it.path) }

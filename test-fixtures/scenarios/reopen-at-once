@@ -7,11 +7,11 @@ adb shell am start -W -n $pkg/.MainActivity >/dev/null
 home_open
 tap $NEW_TILE
 page_open
-# Home lays out its tiles once the queued save is written; a second is enough for that, and far
-# less than a child takes, while the reopen still races the page's save.
-adb shell "$(stroke 500 400 1300 450); input tap $HOME_BUTTON; sleep 1; input tap $SAVED_TILE"
+# Home lays out its tiles once the queued save is written; the tile is tapped the moment it can
+# open the page, so the reopen still races the page's save.
+adb shell "$(stroke 500 400 1300 450); input tap $HOME_BUTTON; $(reopen_saved)"
 page_open
-adb shell "$(stroke 500 800 1300 850); input tap $HOME_BUTTON; sleep 1; input tap $SAVED_TILE"
+adb shell "$(stroke 500 800 1300 850); input tap $HOME_BUTTON; $(reopen_saved)"
 page_open
 capture reopen-at-once
 failed=0

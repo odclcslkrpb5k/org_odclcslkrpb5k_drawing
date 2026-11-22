@@ -5,6 +5,8 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.view.Gravity
+import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.ImageView
 import android.widget.ScrollView
@@ -16,7 +18,8 @@ import org.odclcslkrpb5k.drawing.core.PageId
 
 /**
  * Home: big "new page" and "coloring pages" tiles, then every saved page, newest first. A tap opens
- * a page. "Coloring pages" shows the coloring pages instead, with a tile (and Back) to return.
+ * a page. "Coloring pages" shows the coloring pages instead, with a tile (and Back) to return. A
+ * faint dot in the bottom corner, held with two fingers, opens the parent's screen.
  */
 class MainActivity : Activity() {
     private val store by lazy { PageStore(filesDir) }
@@ -35,11 +38,24 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val gate =
+            HoldButton(this).apply {
+                contentDescription = "parent"
+                onHeld = { startActivity(Intent(this@MainActivity, ParentActivity::class.java)) }
+            }
         setContentView(
-            ScrollView(this).apply {
-                setBackgroundColor(BACKGROUND)
-                setPadding(dp(PAD), dp(PAD), dp(PAD), dp(PAD))
-                addView(grid)
+            FrameLayout(this).apply {
+                addView(
+                    ScrollView(this@MainActivity).apply {
+                        setBackgroundColor(BACKGROUND)
+                        setPadding(dp(PAD), dp(PAD), dp(PAD), dp(PAD))
+                        addView(grid)
+                    }
+                )
+                addView(
+                    gate,
+                    FrameLayout.LayoutParams(dp(GATE), dp(GATE), Gravity.BOTTOM or Gravity.END),
+                )
             }
         )
     }
@@ -166,6 +182,7 @@ class MainActivity : Activity() {
         const val TILE_W = 280
         const val TILE_H = 175
         const val CORNER = 24
+        const val GATE = 120
         const val BACKGROUND = 0xFFF4EEFF.toInt()
         const val TILE = 0xFFFFFFFF.toInt()
         const val TILE_EDGE = 0xFFD9CCF5.toInt()

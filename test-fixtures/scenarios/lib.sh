@@ -123,6 +123,9 @@ wait_for() {
     sleep 0.5
   done
   echo "scenario: $what did not appear within 20 s"
+  # The scenario's own log, for the reason: a timeout would otherwise leave the previous one's.
+  command adb logcat -d >"$OUT_DIR/logcat.txt"
+  grep -E "AndroidRuntime|Process: $pkg|Fatal signal|ANR in $pkg|StrictMode|Displayed $pkg|START u0" "$OUT_DIR/logcat.txt" | tail -15
   exit 1
 }
 
@@ -143,4 +146,48 @@ colored() {
   read -r r g b <<<"$(pixel "$1" "$2")"
   [ $((r > $3 ? r - $3 : $3 - r)) -le 16 ] && [ $((g > $4 ? g - $4 : $4 - g)) -le 16 ] &&
     [ $((b > $5 ? b - $5 : $5 - b)) -le 16 ]
+}
+
+# A two-finger hold at (x1,y1) and (x2,y2) for $5 seconds. `input` has no multi-touch, so the
+# fingers go straight to the emulator's first multi-touch device (0..32767 on each axis), as one adb
+# shell command so the hold is not stretched by adb round trips. The shell user may not write input
+# devices (SELinux), so it runs as root through the image's su. The path names /dev/input, so the
+# adb wrapper marks the last capture stale.
+hold2() {
+  local dev cmd s
+  dev=$(command adb shell getevent -pl | tr -d '\r' |
+    awk '/^add device/ { d = $4 } /name: *"virtio_input_multi_touch_1"/ { print d; exit }')
+  [ -n "$dev" ] || { echo "scenario: no multi-touch device on the emulator"; exit 1; }
+  s="sendevent $dev"
+  cmd="$s 3 47 0; $s 3 57 101; $s 3 53 $(($1 * 32767 / (width - 1))); $s 3 54 $(($2 * 32767 / (height - 1))); $s 3 58 50"
+  cmd+="; $s 3 47 1; $s 3 57 102; $s 3 53 $(($3 * 32767 / (width - 1))); $s 3 54 $(($4 * 32767 / (height - 1))); $s 3 58 50"
+  cmd+="; $s 0 0 0; sleep $5"
+  cmd+="; $s 3 47 0; $s 3 57 -1; $s 3 47 1; $s 3 57 -1; $s 0 0 0"
+  adb shell "su 0 sh -c '$cmd'"
+}
+
+# The parent gate: home's faint dot in the bottom corner, and two fingers on it.
+GATE_DOT="1830 1110"
+GATE_FINGERS="1805 1110 1855 1110"
+
+# The parent screen (grey, where home is lavender), and on it the first saved page's actions.
+parent_open() { wait_for "the parent screen" colored 1900 600 224 224 224; }
+TRASH_ACTION="258 364"
+VERSIONS_ACTION="390 364"
+# Its versions, newest first: the second tile is the version before the newest.
+OLDER_VERSION="702 299"
+# With no saved pages, the trash's first page's "put back"; and its bin (held to empty) with
+# one saved page above it.
+PUT_BACK_ACTION="390 651"
+EMPTY_TRASH_KEPT_FINGERS="100 630 146 630"
+
+# Shell commands, for the same adb shell as what precedes them, that reopen the newest saved page
+# as soon as home can take the tap: wait until home is in front, then tap its tile until a page is.
+# A fixed sleep here lost the race under load (home had not laid out its tiles yet), and a tap
+# after the page opened would draw on it, so each tap is sent only while home is in front.
+reopen_saved() {
+  local top="dumpsys activity activities | grep -E 'topResumedActivity=.*$pkg/'"
+  printf '%s' "for i in \$(seq 1 100); do $top | grep -q MainActivity && break; sleep 0.1; done; "
+  printf '%s' "for i in \$(seq 1 80); do $top | grep -q DrawingActivity && break; "
+  printf '%s' "$top | grep -q MainActivity && input tap $SAVED_TILE; sleep 0.25; done"
 }

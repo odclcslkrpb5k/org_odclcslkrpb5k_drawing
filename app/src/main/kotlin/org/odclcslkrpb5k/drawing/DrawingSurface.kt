@@ -2,13 +2,11 @@ package org.odclcslkrpb5k.drawing
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
 import android.util.Log
 import android.view.MotionEvent
 import android.widget.FrameLayout
-import androidx.core.graphics.createBitmap
 import androidx.ink.authoring.InProgressStrokesView
 import org.odclcslkrpb5k.drawing.adapters.Coloring
 import org.odclcslkrpb5k.drawing.core.Argb
@@ -125,18 +123,7 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
     }
 
     /** The page, strokes and stamps, small, for the gallery. */
-    fun thumbnail(): Bitmap {
-        val thumb =
-            createBitmap((Page.WIDTH / THUMB_SCALE).toInt(), (Page.HEIGHT / THUMB_SCALE).toInt())
-        val canvas = Canvas(thumb)
-        canvas.scale(1f / THUMB_SCALE, 1f / THUMB_SCALE)
-        canvas.drawColor(Color.WHITE)
-        fills.drawPage(canvas)
-        finished.drawPage(canvas)
-        lines.drawPage(canvas)
-        stampsView.drawOnPage(canvas)
-        return thumb
-    }
+    fun thumbnail(): Bitmap = thumbnail(fills, finished, lines, stampsView)
 
     private fun settled(block: () -> Unit, frames: Int) {
         when {
@@ -239,7 +226,6 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
     private companion object {
         const val TAG = "DrawingSurface"
         const val LEAVE_FRAMES = 180
-        const val THUMB_SCALE = 6f
 
         const val DEFAULT_COLOR = 0xFF7A4BE0.toInt()
     }

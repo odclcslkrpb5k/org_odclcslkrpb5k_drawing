@@ -1,0 +1,1 @@
+sed -i 's/<= rule.slop \* rule.slop$/<= rule.slop * rule.slop * 100/' core/src/main/kotlin/org/odclcslkrpb5k/drawing/core/Hold.kt

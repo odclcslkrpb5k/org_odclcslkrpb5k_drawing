@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# The parent gate and screen. One finger held on home's corner dot does nothing; two fingers held
+# open the parent screen. There a page rolls back to the version before its last stroke, goes to
+# the trash (leaving home), comes back, goes again, and the trash is emptied by a two-finger hold.
+set -euo pipefail
+. "$(dirname "$0")/lib.sh"
+home_bg() { colored 1900 600 244 238 255; }
+adb shell am start -W -n $pkg/.MainActivity >/dev/null
+home_open
+tap $NEW_TILE
+page_open
+adb shell "$(stroke 300 300 900 300)"
+sleep 2
+adb shell "$(stroke 300 800 900 800)"
+sleep 2
+tap $HOME_BUTTON
+home_open
+
+adb shell input swipe $GATE_DOT $GATE_DOT 4000
+sleep 1
+capture gate-one-finger
+home_bg || { echo "scenario: one finger held on the dot opened something"; exit 1; }
+
+hold2 $GATE_FINGERS 4
+parent_open
+capture gate-parent
+tap $VERSIONS_ACTION
+wait_for "the versions" colored ${OLDER_VERSION% *} 299 255 255 255
+capture gate-versions
+tap $OLDER_VERSION
+# Back on the list (one page: no second tile), not still on the versions.
+wait_for "the list after the roll back" colored ${OLDER_VERSION% *} 299 224 224 224
+adb shell input keyevent BACK
+home_open
+tap $SAVED_TILE
+page_open
+capture gate-rolled-back
+failed=0
+inked 600 300 || { echo "scenario: the roll back lost the first stroke"; failed=1; }
+inked 600 800 && { echo "scenario: the roll back kept the stroke drawn after that version"; failed=1; }
+tap $HOME_BUTTON
+home_open
+
+hold2 $GATE_FINGERS 4
+parent_open
+tap $TRASH_ACTION
+sleep 2
+capture gate-trashed
+adb shell input keyevent BACK
+home_open
+capture gate-home-trashed
+colored ${SAVED_TILE} 244 238 255 || { echo "scenario: a trashed page is still on home"; failed=1; }
+inked_column 1141 60 280 && { echo "scenario: home still shows the trashed page"; failed=1; }
+
+hold2 $GATE_FINGERS 4
+parent_open
+tap $PUT_BACK_ACTION
+# Put back, the page is among the saved pages again (white tile in their row).
+wait_for "the page put back" colored 246 250 255 255 255
+adb shell input keyevent BACK
+home_open
+capture gate-home-put-back
+inked_column 1141 60 280 || { echo "scenario: the page put back is not on home"; failed=1; }
+
+# A second page, newer, so it is first on the parent screen; only it goes to the trash, and the
+# first page must outlive emptying the trash.
+tap $NEW_TILE
+page_open
+adb shell "$(stroke 1000 1000 1400 1000)"
+sleep 2
+tap $HOME_BUTTON
+home_open
+hold2 $GATE_FINGERS 4
+parent_open
+tap $TRASH_ACTION
+wait_for "the second page in the trash" colored 246 900 255 255 255
+hold2 $EMPTY_TRASH_KEPT_FINGERS 4
+wait_for "an empty trash" colored 246 900 224 224 224
+capture gate-emptied
+left=$(adb shell run-as $pkg ls files/trash | tr -d '\r')
+[ -z "$left" ] || { echo "scenario: the emptied trash still holds: $left"; failed=1; }
+kept=$(adb shell run-as $pkg ls files/drawings | tr -d '\r' | wc -l)
+[ "$kept" -eq 1 ] || { echo "scenario: emptying the trash left $kept saved pages, not 1"; failed=1; }
+adb shell input keyevent BACK
+home_open
+capture gate-home-emptied
+tap $SAVED_TILE
+page_open
+capture gate-kept
+inked 600 300 || { echo "scenario: the page outside the trash lost its stroke"; failed=1; }
+inked 1200 1000 && { echo "scenario: the emptied page is the one that opened"; failed=1; }
+[ "$failed" -eq 0 ] || exit 1
+no_errors
+echo "scenario parent-gate: one finger did nothing; two opened the parent screen; roll back, trash, put back and empty all held"

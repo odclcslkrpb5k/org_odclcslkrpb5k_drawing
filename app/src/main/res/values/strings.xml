@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Drawing</string>
+    <!-- The parent screen only; nothing the child sees has words. -->
+    <string name="parent_drawings">Drawings: put one in the trash, or go back to an older version</string>
+    <string name="parent_versions">Versions, newest first: tap one to make it the newest again</string>
+    <string name="parent_trash">Trash: tap one to put it back. Hold the bin with two fingers to empty it for good</string>
 </resources>

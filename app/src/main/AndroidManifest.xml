@@ -34,5 +34,12 @@
             android:resizeableActivity="false"
             android:screenOrientation="sensorLandscape"
             tools:ignore="DiscouragedApi,NonResizeableActivity" />
+        <activity
+            android:name=".ParentActivity"
+            android:configChanges="uiMode|density|fontScale|keyboard|keyboardHidden|navigation|locale|layoutDirection|screenLayout|smallestScreenSize|screenSize|orientation"
+            android:exported="false"
+            android:resizeableActivity="false"
+            android:screenOrientation="sensorLandscape"
+            tools:ignore="DiscouragedApi,NonResizeableActivity" />
     </application>
 </manifest>

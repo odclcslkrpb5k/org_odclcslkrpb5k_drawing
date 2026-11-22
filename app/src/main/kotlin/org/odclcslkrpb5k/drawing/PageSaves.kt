@@ -68,6 +68,9 @@ object PageSaves {
         if (e.saved < e.changes || e.thumbSaved < e.saved) schedule(store, id, e, 0L)
     }
 
+    /** Whether a screen may still change the page, or a change to it is not yet on disk. */
+    fun busy(id: PageId): Boolean = id in owners || id in entries
+
     /** The page's newest change if it is not yet on disk; newer than anything a load would read. */
     fun unsaved(id: PageId): History? = entries[id]?.takeIf { it.saved < it.changes }?.latest
 
