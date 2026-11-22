@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# The one check command (TC-5): runs inside the check container, offline. Gradle prints only lint's
+# first finding, so the full lint report is printed whatever the outcome (AG-2).
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+status=0
+./gradlew --offline --no-daemon --console=plain test lint assembleRelease || status=$?
+while IFS= read -r -d '' report; do
+  echo "--- lint report: $report ---"
+  cat "$report"
+done < <(find build -name 'lint-results-*.txt' -print0)
+exit "$status"

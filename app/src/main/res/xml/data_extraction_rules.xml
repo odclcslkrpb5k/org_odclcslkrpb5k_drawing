@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Auto Backup carries drawings only; thumbnails and photos are excluded to stay under 25 MB. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="file" path="drawings/" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="file" path="drawings/" />
+    </device-transfer>
+</data-extraction-rules>

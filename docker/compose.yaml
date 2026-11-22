@@ -1,0 +1,10 @@
+# docker compose -f docker/compose.yaml run --build --rm check    every check, offline (TC-5, TS-1)
+name: drawing
+
+services:
+  check:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: drawing-check:dev
+    network_mode: none
