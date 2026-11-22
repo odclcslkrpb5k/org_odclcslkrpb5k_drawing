@@ -1,0 +1,20 @@
+#!/bin/sh
+# TC-10: scans every Gradle lockfile in the tree for known vulnerabilities, with the waivers in
+# osv-scanner.toml. Runs in the vulns service (osv-scanner's image, POSIX sh, with a network).
+# The lockfiles are found here, so no list of them can fall behind the tree. osv-scanner cannot read
+# settings-gradle.lockfile, so that one must hold no dependency.
+set -eu
+cd "$(dirname "$0")/../.."
+args=""
+for f in $(find . -name '*gradle.lockfile' -not -path './build/*' -not -path './test-fixtures/*' | sort); do
+  case "$f" in
+    */settings-gradle.lockfile)
+      while IFS= read -r line; do
+        case "$line" in '#'* | empty=* | '') ;; *) echo "vulns: $f holds dependencies osv-scanner cannot read"; exit 1 ;; esac
+      done <"$f" ;;
+    *) args="$args -L=$f" ;;
+  esac
+done
+[ -n "$args" ] || { echo "vulns: no lockfile found"; exit 1; }
+# shellcheck disable=SC2086
+exec /osv-scanner scan source --config=osv-scanner.toml $args

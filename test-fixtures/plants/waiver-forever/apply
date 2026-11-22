@@ -1,0 +1,1 @@
+sed -i 's/^ignoreUntil = .*/ignoreUntil = 2099-01-01T00:00:00Z/' osv-scanner.toml

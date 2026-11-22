@@ -1,0 +1,10 @@
+# Waivers for the vulnerability scan (TC-10). Each expires; when it does, the scan fails again and
+# the waiver is renewed with a fresh reason or the dependency is moved.
+
+[[IgnoredVulns]]
+id = "GHSA-r937-wjx7-w2jp"
+ignoreUntil = 2026-12-31T00:00:00Z
+reason = """Kotlin Gradle plugin 2.4.10: unsafe deserialization of Kotlin build-cache metadata. Kotlin is
+held at 2.4.10 because detekt 2.0.0-alpha.6 is built on it. Builds run in a throwaway container with
+Gradle's build cache off (gradle.properties), so no build cache another party can write is read.
+Move to 2.4.20+ when detekt publishes a release built on it."""

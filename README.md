@@ -8,7 +8,10 @@ Needs Docker only.
 
     docker compose run --build --rm check
 
-runs every check offline: unit tests, Android Lint, and a release build.
+runs every check offline: format, lint (detekt and Android Lint), unit tests, licences, a release
+build and its merged manifest. Other services: `plants` (each check's planted bug), `vulns`
+(known vulnerabilities; needs a network), `ship-tests`, and `tools/emulator <scenario>` (a
+headless Android 16 emulator; needs /dev/kvm).
 
 ## Configure
 
@@ -16,5 +19,9 @@ Nothing reads the environment. Device: Samsung Galaxy Tab A11+ (Android 16, 1920
 
 ## Install and operate
 
-Release signing and installation are documented once the release key and the install rehearsal
-are done (planned before the first install on the tablet).
+The release key is made once by a person with `tools/release/make-key`, kept outside every
+repository and backed up offline in two places: a lost key means uninstalling the app, and its
+drawings, to update it. Installation steps follow the install rehearsal on the tablet.
+
+Parent setup on the tablet: the first time the app opens full screen, Android shows a one-time
+"Viewing full screen" notice; dismiss it with "Got it".

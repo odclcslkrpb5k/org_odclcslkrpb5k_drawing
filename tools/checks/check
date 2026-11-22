@@ -9,10 +9,10 @@ log=$(mktemp)
 status=0
 tools/checks/casts || status=1
 tools/checks/vendored || status=1
+tools/checks/waivers || status=1
+tools/checks/keys || status=1
 ./gradlew --offline --no-daemon --console=plain --warning-mode=all \
-  ktfmtCheck \
-  :core:detektMain :core:detektTest :app:detektMain :app:detektTest \
-  test lint assembleRelease 2>&1 | tee "$log" || status=$?
+  checkAll 2>&1 | tee "$log" || status=$?
 [ "$status" -ne 0 ] || tools/checks/apk || status=1
 
 while IFS= read -r -d '' report; do

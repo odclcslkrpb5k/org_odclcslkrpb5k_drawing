@@ -67,3 +67,12 @@ services:
     volumes:
       - ./build/emulator:/out
     entrypoint: ["tools/checks/emulator"]
+
+  # Known vulnerabilities in every locked dependency (TC-10): the one check with a network, judged by
+  # its exit status (without a network it exits non-zero rather than reporting nothing found).
+  vulns:
+    image: ghcr.io/google/osv-scanner@sha256:4f3b7e2c64b9d38a5febc5a7e4a3dfef1d1362f726dea7a2ef4762b46469fcd0
+    working_dir: /src
+    volumes:
+      - .:/src:ro
+    entrypoint: ["sh", "tools/checks/vulns"]

@@ -10,7 +10,6 @@ printf 'package warm\n\nfun warm(): Int = 1\n' >core/src/main/kotlin/Warm.kt
 printf 'package warm\n\nimport io.kotest.core.spec.style.StringSpec\n\nclass WarmTest : StringSpec({ "w" { check(warm() == 1) } })\n' >core/src/test/kotlin/WarmTest.kt
 printf 'package org.odclcslkrpb5k.drawing\n\nclass MainActivity : android.app.Activity()\n' \
   >app/src/main/kotlin/org/odclcslkrpb5k/drawing/MainActivity.kt
-./gradlew --no-daemon --continue --console=plain resolveAll ktfmtCheck \
-  :core:detektMain :core:detektTest :app:detektMain :app:detektTest test lint assembleRelease
+./gradlew --no-daemon --continue --console=plain resolveAll checkAll
 rm -rf core/src app/src/main/kotlin build
 exit 0

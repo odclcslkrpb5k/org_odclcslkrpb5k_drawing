@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# DP-1: no signing key material in the tree, where the image's COPY would carry it into a layer.
+set -euo pipefail
+export LC_ALL=C
+cd "$(dirname "$0")/../.."
+keys=$(find . \( -name '*.jks' -o -name '*.keystore' -o -name '*.p12' \) -not -path './build/*' -not -path './.git/*')
+[ -z "$keys" ] || { echo "keys: signing key material in the tree:"; echo "$keys"; exit 1; }

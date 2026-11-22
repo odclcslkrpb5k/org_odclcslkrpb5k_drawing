@@ -1,0 +1,1 @@
+sed -i 's|licensee { allow("Apache-2.0") }|licensee {}|' core/build.gradle.kts

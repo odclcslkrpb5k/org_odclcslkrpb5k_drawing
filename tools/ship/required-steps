@@ -12,3 +12,7 @@
 ^(tools/ship/|\.githooks/|test/ship/|test/support/|docker/ship\.Dockerfile$|compose\.yaml$)	ship-tests	docker compose run --build --rm ship-tests
 # A change to the app or its model draws on the emulator, and the strokes must reach the page.
 ^(app/|core/src/main/|test-fixtures/scenarios/|tools/checks/emulator$|tools/emulator$)	draw-strokes	tools/emulator test-fixtures/scenarios/draw-strokes
+# Every ship scans for known vulnerabilities (TC-10), so an advisory published since the last ship
+# is found at the next one, whatever it changes. It needs the network, so it is not in the offline
+# check.
+.	vulns	docker compose run --rm vulns

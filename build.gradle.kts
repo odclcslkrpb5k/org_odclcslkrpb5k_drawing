@@ -1,10 +1,26 @@
 // TC-3: the plugins' own classpath is locked as well (buildscript-gradle.lockfile).
-buildscript { dependencyLocking { lockAllConfigurations() } }
+buildscript {
+    dependencyLocking { lockAllConfigurations() }
+    dependencies {
+        constraints {
+            classpath(libs.floor.guava)
+            classpath(libs.floor.commons.lang3)
+            classpath(libs.floor.httpclient)
+            classpath(libs.floor.bcprov)
+            classpath(libs.floor.bcpkix)
+            classpath(libs.floor.bcutil)
+            classpath(libs.floor.jose4j)
+            classpath(libs.floor.jdom2)
+            classpath(libs.floor.plexus.utils)
+        }
+    }
+}
 
 plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.detekt) apply false
+    alias(libs.plugins.licensee) apply false
 }
 
 allprojects {
@@ -55,4 +71,21 @@ tasks.register<JavaExec>("ktfmtFormat") {
     argumentProviders.add(
         CommandLineArgumentProvider { kotlinSources().files.map { it.path }.sorted() }
     )
+}
+
+// Every task the check runs, named once: tools/checks/check, warm and relock all call this. Tasks
+// are taken from every subproject by name, so a new module is checked without an edit here.
+val checkedTaskNames =
+    setOf(
+        "test",
+        "lint",
+        "detektMain",
+        "detektTest",
+        "licensee",
+        "assembleRelease",
+    )
+
+tasks.register("checkAll") {
+    dependsOn("ktfmtCheck")
+    subprojects.forEach { p -> dependsOn(p.tasks.matching { it.name in checkedTaskNames }) }
 }

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# TC-10: every vulnerability waiver in osv-scanner.toml expires within 90 days and gives a reason,
+# so a waiver cannot quietly become permanent.
+set -euo pipefail
+export LC_ALL=C
+cd "$(dirname "$0")/../.."
+limit=$(date -u -d '+90 days' +%s)
+status=0 n=0
+while IFS=$'\t' read -r id until reason; do
+  n=$((n + 1))
+  [ -n "$until" ] || { echo "waivers: $id has no ignoreUntil"; status=1; continue; }
+  when=$(date -u -d "$until" +%s 2>/dev/null) || { echo "waivers: $id: unreadable ignoreUntil $until"; status=1; continue; }
+  [ "$when" -le "$limit" ] || { echo "waivers: $id expires $until, more than 90 days away"; status=1; }
+  [ -n "$reason" ] || { echo "waivers: $id has no reason"; status=1; }
+done < <(awk '
+  function flush() { if (id != "") printf "%s\t%s\t%s\n", id, until, reason; id=""; until=""; reason="" }
+  /^\[\[IgnoredVulns\]\]/ { flush(); inblock=1; next }
+  /^\[/ { flush(); inblock=0; next }
+  inblock && /^id *=/ { v=$0; sub(/^id *= *"/, "", v); sub(/".*/, "", v); id=v }
+  inblock && /^ignoreUntil *=/ { v=$0; sub(/^ignoreUntil *= */, "", v); until=v }
+  inblock && /^reason *=/ { v=$0; sub(/^reason *= *"*/, "", v); reason=(v == "" ? "multi" : v) }
+  END { flush() }' osv-scanner.toml)
+[ "$status" -ne 0 ] || echo "waivers: $n waiver(s), each expiring within 90 days with a reason"
+exit "$status"

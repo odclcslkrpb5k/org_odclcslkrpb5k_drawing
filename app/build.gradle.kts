@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.detekt)
+    alias(libs.plugins.licensee)
 }
 
 android {
@@ -37,7 +38,22 @@ detekt {
     config.setFrom(rootProject.file("config/detekt/detekt.yml"))
 }
 
+// TC-11: every library in the app's runtime classpath has a licence on this list.
+licensee { allow("Apache-2.0") }
+
 dependencies {
+    // TC-10: floors for Android Lint's own classpath; none of these ships in the APK.
+    for (floor in
+        listOf(
+            libs.floor.guava,
+            libs.floor.commons.lang3,
+            libs.floor.httpclient,
+            libs.floor.bcprov,
+            libs.floor.bcpkix,
+            libs.floor.bcutil,
+        )) {
+        constraints.add("androidLintTool", floor)
+    }
     implementation(project(":core"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity)

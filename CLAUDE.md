@@ -13,6 +13,10 @@ Deviations, each with its reason:
 - **RP-3:** notes live in the workspace repo's `claude-notes/`, shared by every app, not in this repo.
 - **SDK:** `targetSdk 36` with the large-screen resizability opt-out and a landscape lock; lint's
   `OldTargetApi`, `DiscouragedApi` and `NonResizeableActivity` are suppressed for that reason only.
+- **TS-10:** two vendored ship-tool tests that need TypeScript's compiler are excluded by name
+  (compose.yaml, `ship-tests`); this project has no TypeScript for `mutate` to type-check.
+- **TC-4:** Gradle has no minimum-release-age setting; no control yet.
+- **TC-11:** licensee sees the runtime classpaths only, not build tools.
 - Controls not yet built are listed in `../claude-notes/drawing.md` under "Gate status".
 
 ## Checks
@@ -21,7 +25,15 @@ Deviations, each with its reason:
 - `docker compose run --build --rm plants` — each control's planted bug must be caught (TS-5).
 - `docker compose run --build --rm dev tools/checks/relock` — after a dependency change: rewrites
   lockfiles and verification metadata from an empty Gradle home. Review every new checksum.
+- `docker compose run --rm vulns` — known vulnerabilities in every lockfile it finds (TC-10), the
+  one check with a network, required on every ship; waivers in `osv-scanner.toml` must expire
+  within 90 days (tools/checks/waivers). Build-tool libraries are raised to safe
+  versions by the catalog's `floor-*` constraints rather than waived.
+- `tools/emulator test-fixtures/scenarios/<name>` — a scenario on a headless Android 16 emulator
+  (KVM); screenshots in `build/emulator/`. Scenarios assert pixels, never only "the app is alive".
+- The Gradle tasks the check runs are named once, in the root `checkAll` task.
 - Never run `tools/checks/warm` outside the image build; it deletes sources (it refuses to).
+- `tools/release/make-key` is for the person to run, never the agent (DP-2).
 
 ## Shipping (chapter 10)
 The ship tool is vendored in `tools/ship/` (manifest `tools/vendor-manifest.tsv`; RP-4). Its

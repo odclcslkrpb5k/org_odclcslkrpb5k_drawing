@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Creates the release signing key, once, for a person to run (DP-2: its passwords never pass through
+# an agent session). keytool asks for the passwords itself. The keystore goes outside every
+# repository; back it up offline in two places before installing anything signed with it, since a
+# lost key means uninstalling the app (and its drawings) to update it.
+#
+# Usage: tools/release/make-key [keystore-directory]   (default ~/.config/odclcslkrpb5k-android)
+# Needs the drawing-check:dev image: docker compose build check
+set -euo pipefail
+umask 077
+dir=${1:-$HOME/.config/odclcslkrpb5k-android}
+store=$dir/release.jks
+[ ! -e "$store" ] || { echo "make-key: $store exists; refusing to overwrite a release key" >&2; exit 1; }
+if [ -d "$dir" ] && git -C "$dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "make-key: $dir is inside a git work tree; a release key never goes in a repository" >&2
+  exit 1
+fi
+[ -d "$dir" ] || mkdir -p "$dir"
+run() {
+  docker run --rm -it --pull never --network none -u "$(id -u):$(id -g)" -v "$dir:/keys" \
+    drawing-check:dev "$@"
+}
+run keytool -genkeypair -keystore /keys/release.jks -storetype PKCS12 -alias release \
+  -keyalg RSA -keysize 4096 -validity 36500 -dname "CN=odclcslkrpb5k Android release"
+echo
+echo "Created $store."
+echo "Its certificate's SHA-256, as apksigner prints it (lowercase, no colons). Record it in"
+echo "tools/release/certificate.sha256 in each app repository; the release check compares it:"
+run sh -c 'keytool -list -v -keystore /keys/release.jks -alias release | sed -n "s/^.*SHA256: //p" | tr -d ":\r" | tr "A-F" "a-f"'
+echo "Now copy $store, with its password, to two offline places."

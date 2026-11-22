@@ -11,6 +11,5 @@ home=$(mktemp -d)
 rm -rf build gradle/verification-metadata.xml
 ./gradlew --gradle-user-home "$home" --no-daemon --console=plain \
   --continue --write-locks --write-verification-metadata sha256 \
-  resolveAll ktfmtCheck :core:detektMain :core:detektTest :app:detektMain :app:detektTest \
-  test lint assembleRelease
+  resolveAll checkAll
 rm -rf "$home"

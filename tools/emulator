@@ -4,4 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p build/emulator
+# The emulator needs about 8 GB of container storage; say so plainly rather than fail mid-boot.
+free_gb=$(( $(df --output=avail -k "$(docker info --format '{{.DockerRootDir}}')" | tail -1) / 1048576 ))
+[ "$free_gb" -ge 10 ] || { echo "emulator: only ${free_gb} GB free for Docker; need 10 (try: docker builder prune --filter until=30m)" >&2; exit 1; }
 KVM_GID=$(stat -c %g /dev/kvm) exec docker compose run --build --rm emulator "$@"

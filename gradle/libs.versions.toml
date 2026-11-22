@@ -8,6 +8,7 @@ ink = "1.0.0"
 graphics-core = "1.0.4"
 detekt = "2.0.0-alpha.6"
 ktfmt = "0.64"
+licensee = "1.14.1"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
@@ -20,7 +21,20 @@ kotest-runner = { module = "io.kotest:kotest-runner-junit5", version.ref = "kote
 ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
 kotest-property = { module = "io.kotest:kotest-property", version.ref = "kotest" }
 
+# Floors for build-tool libraries with known vulnerabilities (TC-10), applied as constraints to the
+# plugin classpath and to Android Lint's classpath; none of them ships in the APK.
+floor-guava = { module = "com.google.guava:guava", version = "33.7.2-jre" }
+floor-commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.18.0" }
+floor-httpclient = { module = "org.apache.httpcomponents:httpclient", version = "4.5.14" }
+floor-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version = "1.85" }
+floor-bcpkix = { module = "org.bouncycastle:bcpkix-jdk18on", version = "1.85" }
+floor-bcutil = { module = "org.bouncycastle:bcutil-jdk18on", version = "1.85" }
+floor-jose4j = { module = "org.bitbucket.b_c:jose4j", version = "0.9.6" }
+floor-jdom2 = { module = "org.jdom:jdom2", version = "2.0.6.1" }
+floor-plexus-utils = { module = "org.codehaus.plexus:plexus-utils", version = "3.6.1" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+licensee = { id = "app.cash.licensee", version.ref = "licensee" }
 detekt = { id = "dev.detekt", version.ref = "detekt" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

@@ -11,6 +11,7 @@
 ^README\.md$
 ^LICENSE$
 ^compose\.yaml$
+^osv-scanner\.toml$
 ^build\.gradle\.kts$
 ^settings\.gradle\.kts$
 ^gradle\.properties$
