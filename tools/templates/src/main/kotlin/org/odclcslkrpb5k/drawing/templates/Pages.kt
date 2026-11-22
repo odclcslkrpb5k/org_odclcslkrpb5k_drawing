@@ -88,9 +88,10 @@ fun problems(name: String, raster: Raster, regions: Regions, expected: Int?): Li
     if (expected == null) {
         found += "$name: not in pages.tsv (it has ${regions.count} regions)"
     } else if (regions.count != expected) {
-        found +=
-            "$name: has ${regions.count} regions, pages.tsv says $expected (a gap in a line " +
-                "merges two shapes)"
+        val why =
+            if (regions.count < expected) "a gap in a line merges two shapes"
+            else "a shape was added or split; if on purpose, update pages.tsv"
+        found += "$name: has ${regions.count} regions, pages.tsv says $expected ($why)"
     }
     val sizes = regions.sizes()
     val limit = regions.width.toLong() * regions.height * PageRules.MAX_SHAPE_PERCENT / PERCENT
