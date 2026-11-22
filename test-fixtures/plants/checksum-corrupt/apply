@@ -1,0 +1,1 @@
+perl -0pi -e 's|(<component group="io.kotest" name="kotest-property" version="[^"]+">.*?<sha256 value=")[0-9a-f]{64}|${1}'"$(printf 'f%.0s' $(seq 64))"'|s' gradle/verification-metadata.xml

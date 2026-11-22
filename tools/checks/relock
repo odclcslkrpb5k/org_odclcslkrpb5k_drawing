@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Rewrites the dependency lockfiles and gradle/verification-metadata.xml (TC-3), from an empty Gradle
+# home so every artifact is downloaded and recorded. Run in the dev service, which has a network:
+#   docker compose run --build --rm dev tools/checks/relock
+# Review the diff: every new checksum is trusted on first use.
+set -euo pipefail
+export LC_ALL=C
+cd "$(dirname "$0")/../.."
+home=$(mktemp -d)
+# Up-to-date tasks resolve nothing, so stale outputs would leave artifacts unrecorded.
+rm -rf build gradle/verification-metadata.xml
+./gradlew --gradle-user-home "$home" --no-daemon --console=plain \
+  --continue --write-locks --write-verification-metadata sha256 \
+  resolveAll ktfmtCheck :core:detektMain :core:detektTest :app:detektMain :app:detektTest \
+  test lint assembleRelease
+rm -rf "$home"

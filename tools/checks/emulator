@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Boots a headless Android 16 emulator shaped like the tablet (1920x1200 landscape, density 240),
+# installs the debug build and runs a scenario script against it; screenshots land in out/.
+# Runs in the emulator service (KVM). Usage: emulator <scenario-script> [args...]
+set -euo pipefail
+export LC_ALL=C
+cd "$(dirname "$0")/../.."
+[ $# -ge 1 ] || { echo "usage: emulator <scenario-script> [args...]" >&2; exit 2; }
+[ -f "$1" ] || { echo "emulator: no scenario $1" >&2; exit 2; }
+out=${OUT_DIR:-/out}
+mkdir -p "$out"
+[ -w "$out" ] || { echo "emulator: $out is not writable (create build/emulator before the run)" >&2; exit 2; }
+export PATH=$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$PATH
+
+avd=tablet
+if [ ! -d "$HOME/.android/avd/$avd.avd" ]; then
+  echo no | avdmanager --silent create avd -n "$avd" -k "system-images;android-36;google_apis;x86_64" >/dev/null
+  cat >>"$HOME/.android/avd/$avd.avd/config.ini" <<CFG
+hw.lcd.width=1920
+hw.lcd.height=1200
+hw.lcd.density=240
+hw.keyboard=yes
+hw.ramSize=4096
+hw.initialOrientation=landscape
+disk.dataPartition.size=4G
+CFG
+fi
+
+emulator -avd "$avd" -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect \
+  -accel on >"$out/emulator.log" 2>&1 &
+emu=$!
+trap 'adb emu kill >/dev/null 2>&1 || kill $emu 2>/dev/null || true' EXIT
+
+# The boot has a deadline, and a dead emulator ends the run at once with its log.
+booted=no
+for _ in $(seq 1 150); do
+  kill -0 "$emu" 2>/dev/null || { echo "emulator: exited during boot"; tail -40 "$out/emulator.log"; exit 1; }
+  [ "$(timeout 5 adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ] && { booted=yes; break; }
+  sleep 2
+done
+[ "$booted" = yes ] || { echo "emulator: not booted after 300 s"; tail -40 "$out/emulator.log"; exit 1; }
+adb shell settings put global window_animation_scale 0
+adb shell settings put global transition_animation_scale 0
+adb shell settings put global animator_duration_scale 0
+# The one-time "Viewing full screen" notice would swallow the scenario's input; a parent dismisses
+# it once on the tablet during setup.
+adb shell settings put secure immersive_mode_confirmations confirmed
+echo "emulator: booted ($(adb shell getprop ro.build.version.release | tr -d '\r'), API $(adb shell getprop ro.build.version.sdk | tr -d '\r'), $(adb shell wm size | tr -d '\r'))"
+
+./gradlew --offline --no-daemon --console=plain -q :app:assembleDebug
+timeout 120 adb install -r build/app/outputs/apk/debug/app-debug.apk >/dev/null
+script=$1; shift
+OUT_DIR=$out timeout 600 bash "$script" "$@"

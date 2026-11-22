@@ -1,0 +1,69 @@
+# docker compose run --build --rm check    every check, offline (TC-5, TS-1)
+# docker compose run --build --rm plants   every control's planted bug (TS-5)
+# docker compose run --build --rm dev CMD  writes to the tree, with network
+# docker compose run --build --rm ship-tests                 the vendored ship tool's own tests
+name: drawing
+
+x-image: &image
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+  # A name of its own, never an upstream tag (DB-2).
+  image: drawing-check:dev
+
+services:
+  check:
+    <<: *image
+    network_mode: none
+
+  plants:
+    <<: *image
+    network_mode: none
+    command: ["tools/checks/plants"]
+
+  # Generating configs and lockfiles, formatting: mounts the working tree and has a network.
+  dev:
+    <<: *image
+    volumes:
+      - .:/repo
+      - /repo/.gradle
+
+  # The vendored ship tool's checks and tests are TypeScript; they run on this pinned node, with no
+  # network and the tree read-only. It is the same node tools/ship/run-node uses.
+  ship-tests:
+    build:
+      context: .
+      dockerfile: docker/ship.Dockerfile
+    image: drawing-ship-tests:dev
+    network_mode: none
+    working_dir: /repo
+    volumes:
+      - .:/repo:ro
+    environment:
+      SHIP_NODE: node
+    # Two tests exercise mutate's TypeScript compile check, which needs tsc; this project has no
+    # TypeScript to mutate, so they are skipped by exact name (a recorded TS-10 deviation).
+    command:
+      - node
+      - --test
+      - --test-timeout=30000
+      - --test-reporter=spec
+      - --test-skip-pattern=^a mutant that does not compile is its own outcome, not a kill, and the file is put back$
+      - --test-skip-pattern=^a compile check that fails for a reason that is not the code judges nothing$
+      - test/ship/*.test.ts
+
+  # A headless Android 16 emulator under KVM, for scenarios and instrumented tests. Screenshots go to
+  # build/emulator/ in the working tree. The host's ACL on /dev/kvm does not reach a container, so
+  # the container joins the device's group; tools/emulator sets KVM_GID. Without it the group is
+  # nogroup and the emulator refuses to start ("requires hardware acceleration"):
+  #   tools/emulator <scenario>
+  emulator:
+    <<: *image
+    network_mode: none
+    devices:
+      - /dev/kvm
+    group_add:
+      - "${KVM_GID:-65534}"
+    volumes:
+      - ./build/emulator:/out
+    entrypoint: ["tools/checks/emulator"]

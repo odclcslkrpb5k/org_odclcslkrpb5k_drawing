@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# RP-4: vendored files match tools/vendor-manifest.tsv exactly, content and executable bit, and every file in
+# the vendored paths is listed. Needs no upstream clone, so it runs in every check.
+set -euo pipefail
+export LC_ALL=C
+cd "$(dirname "$0")/../.."
+manifest=tools/vendor-manifest.tsv
+status=0
+listed=$(mktemp)
+while IFS=$'\t' read -r path mode sum kind; do
+  case "$path" in '#'*|'') continue ;; esac
+  echo "$path" >>"$listed"
+  [ -f "$path" ] || { echo "vendored: missing $path"; status=1; continue; }
+  [ "$kind" = local ] && continue
+  [ "$(sha256sum "$path" | cut -d' ' -f1)" = "$sum" ] || { echo "vendored: edited $path"; status=1; }
+  # Git keeps only the executable bit; the rest of the mode is the checkout's umask.
+  want_x=$(( 8#$mode & 8#100 ))
+  if [ -x "$path" ]; then have_x=64; else have_x=0; fi
+  [ "$have_x" = "$want_x" ] || { echo "vendored: executable bit of $path differs from $mode"; status=1; }
+done <"$manifest"
+unlisted=$(find tools/ship .githooks test/ship test/support tools/secret-hashes.txt -type f | sort |
+  comm -23 - <(sort "$listed"))
+[ -z "$unlisted" ] || { echo "vendored: not in $manifest:"; echo "$unlisted"; status=1; }
+[ "$status" -ne 0 ] || echo "vendored: $(grep -c '' "$listed") files match $manifest"
+exit "$status"

@@ -6,6 +6,7 @@ plugins {
 android {
     namespace = "org.odclcslkrpb5k.drawing"
     compileSdk = 37
+    buildToolsVersion = "36.1.0"
     defaultConfig {
         applicationId = "org.odclcslkrpb5k.drawing"
         minSdk = 35

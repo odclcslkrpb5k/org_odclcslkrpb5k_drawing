@@ -1,3 +1,6 @@
+// TC-3: the plugins' own classpath is locked as well (buildscript-gradle.lockfile).
+buildscript { dependencyLocking { lockAllConfigurations() } }
+
 plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.kotlin.jvm) apply false
@@ -5,6 +8,8 @@ plugins {
 }
 
 allprojects {
+    // TC-3: every resolved configuration is locked; a changed resolution fails until relocked.
+    dependencyLocking { lockAllConfigurations() }
     // One top-level build directory: the ship gate matches ignored paths by top-level name only.
     layout.buildDirectory = rootProject.layout.projectDirectory.dir("build/${project.name}")
 }

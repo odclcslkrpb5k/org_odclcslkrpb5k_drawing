@@ -5,14 +5,18 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">
         <!-- Keeps the landscape lock honoured on large screens while targeting API 36. -->
         <property
             android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY"
             android:value="true" />
-        <!-- The canvas is one fixed landscape page; the lock is deliberate (workspace decisions). -->
+        <!-- The canvas is one fixed landscape page; the lock is deliberate (workspace decisions).
+             The activity handles configuration changes itself, so a theme or keyboard change does
+             not recreate it and drop the page in progress. -->
         <activity
             android:name=".MainActivity"
+            android:configChanges="uiMode|density|fontScale|keyboard|keyboardHidden|navigation|locale|layoutDirection|screenLayout|smallestScreenSize|screenSize|orientation"
             android:exported="true"
             android:resizeableActivity="false"
             android:screenOrientation="sensorLandscape"

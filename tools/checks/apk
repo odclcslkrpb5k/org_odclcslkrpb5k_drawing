@@ -3,6 +3,7 @@
 # silently, and fails on anything tools/checks/apk-allowed.txt does not list, and on any drift in
 # the SDK levels and the landscape lock the app relies on.
 set -euo pipefail
+export LC_ALL=C
 cd "$(dirname "$0")/../.."
 aapt2=$ANDROID_HOME/build-tools/36.1.0/aapt2
 mapfile -t apks < <(find build/app/outputs/apk/release -name '*.apk')
@@ -13,7 +14,7 @@ status=0
 # One line per element of interest: "<kind> <name> exported=<bool> <attr>=<value>..."
 facts=$("$aapt2" dump xmltree --file AndroidManifest.xml "$apk" | awk '
   function flush() { if (kind != "") print kind, name, "exported=" exported, extra; kind="" }
-  /^ *E: / { flush(); k=$2; if (k ~ /^(uses-permission|permission|activity|activity-alias|service|receiver|provider|property|uses-sdk)$/) { kind=k; name="-"; exported="false"; extra="" } }
+  /^ *E: / { flush(); k=$2; if (k ~ /^(uses-permission|uses-permission-sdk-23|uses-permission-sdk-m|permission|activity|activity-alias|service|receiver|provider|property|uses-sdk)$/) { kind=k; name="-"; exported="false"; extra="" } }
   /^ *A: / && kind != "" {
     if ($0 ~ /android:name\(/) { match($0, /\(Raw: "[^"]*"/); name=substr($0, RSTART+7, RLENGTH-8) }
     else if ($0 ~ /:exported\(/) { exported=($0 ~ /=true$/) ? "true" : "false" }
@@ -30,7 +31,7 @@ grep -E '^activity org.odclcslkrpb5k.drawing.MainActivity ' <<<"$facts" | grep -
   || { echo "apk: MainActivity is resizeable"; status=1; }
 
 allowed=$(grep -vE '^(#|$)' tools/checks/apk-allowed.txt)
-actual=$( { awk '$1=="uses-permission" {print "uses-permission", $2}' <<<"$facts"
+actual=$( { awk '$1 ~ /^uses-permission/ {print "uses-permission", $2}' <<<"$facts"
             awk '$3=="exported=true" {print "exported", $1, $2}' <<<"$facts"; } | sort)
 unexpected=$(comm -13 <(sort <<<"$allowed") <(sort <<<"$actual"))
 missing=$(comm -23 <(sort <<<"$allowed") <(sort <<<"$actual"))

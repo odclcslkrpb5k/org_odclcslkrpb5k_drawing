@@ -1,0 +1,14 @@
+# Steps a ship needs besides the gate and the full suite, by the paths it changes since origin's
+# main (SH-13): <extended regex over a changed path>, a tab, the step label, a tab, the exact
+# command. tools/ship/commit-and-push requires the latest run of each matching step to have passed
+# against the shipped tree from start to finish, as it does for the gate and the suite, and reads
+# this file from origin as well as from the tree. Run each one as `tools/ship/timed <label>
+# <command>`.
+#
+# A change to a control, its configuration, the build or the code the plants edit replays every
+# control's planted bug (TS-5).
+^(tools/checks/|test-fixtures/|config/|docker/Dockerfile$|compose\.yaml$|build\.gradle\.kts$|settings\.gradle\.kts$|gradle\.properties$|gradle/|[a-z-]*gradle\.lockfile$|(app|core)/|tools/vendor-manifest\.tsv$)	plants	docker compose run --build --rm plants
+# A change to the ship tool runs its own tests.
+^(tools/ship/|\.githooks/|test/ship/|test/support/|docker/ship\.Dockerfile$|compose\.yaml$)	ship-tests	docker compose run --build --rm ship-tests
+# A change to the app or its model draws on the emulator, and the strokes must reach the page.
+^(app/|core/src/main/|test-fixtures/scenarios/|tools/checks/emulator$|tools/emulator$)	draw-strokes	tools/emulator test-fixtures/scenarios/draw-strokes

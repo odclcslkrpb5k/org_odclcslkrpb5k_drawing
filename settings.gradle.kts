@@ -26,6 +26,8 @@ dependencyResolutionManagement {
     }
 }
 
+buildscript { dependencyLocking { lockAllConfigurations() } }
+
 rootProject.name = "drawing"
 
 include(":core", ":app")

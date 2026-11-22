@@ -15,9 +15,28 @@ Deviations, each with its reason:
   `OldTargetApi`, `DiscouragedApi` and `NonResizeableActivity` are suppressed for that reason only.
 - Controls not yet built are listed in `../claude-notes/drawing.md` under "Gate status".
 
-## Shipping
-Standing permission (SH-1): commit and push to `main` once `docker compose -f docker/compose.yaml
-run --build --rm check` passes on the tree being committed. Never force-push or skip hooks (SH-6).
+## Checks
+- `docker compose run --build --rm check` — every check, offline: casts, vendored files, ktfmt,
+  detekt, unit tests, lint, release build, the release APK's manifest, and the build-warning list.
+- `docker compose run --build --rm plants` — each control's planted bug must be caught (TS-5).
+- `docker compose run --build --rm dev tools/checks/relock` — after a dependency change: rewrites
+  lockfiles and verification metadata from an empty Gradle home. Review every new checksum.
+- Never run `tools/checks/warm` outside the image build; it deletes sources (it refuses to).
+
+## Shipping (chapter 10)
+The ship tool is vendored in `tools/ship/` (manifest `tools/vendor-manifest.tsv`; RP-4). Its
+path is the tool's own, not `vendor/`, because its scripts and tests name `tools/ship/`; that is a
+deviation from RP-4's layout, not its content rule. Enable hooks once per clone:
+`git config core.hooksPath .githooks`. A ship:
+
+    tools/ship/timed --start
+    tools/ship/steps                         # gate, check, then plants / ship-tests by path
+    tools/ship/commit-and-push <tree> <message-file>
+    tools/ship/close-ship --nothing | --sent "<candidates for the standard>"
+    tools/ship/timed --report
+
+Standing permission (SH-1): the agent commits and pushes to `main` through this cycle without
+asking. Never force-push or skip hooks (SH-6). Harvest into `../claude-notes/` before committing.
 
 ## Never in this repository (it is public)
 The child's name, drawings, photos or any data from the device; parent-supplied art (that lives in

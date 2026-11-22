@@ -4,16 +4,19 @@
 # and `import ... as ...` are allowed. An exception is a line in tools/checks/allowed-casts.txt,
 # "path:count  reason", with the exact count of casts in that file.
 set -euo pipefail
+export LC_ALL=C
 cd "$(dirname "$0")/../.."
 status=0
 mapfile -d '' files < <(find app core -name '*.kt' -not -path '*/build/*' -print0 | sort -z)
+# Known gap: a cast split across lines (`x as` at a line's end) and .kts build scripts are not seen.
 for f in "${files[@]}"; do
   n=$( (grep -vE '^\s*(import |//|\*|/\*)' "$f" || true) | (grep -oE '\bas\s+[A-Za-z(]' || true) | wc -l)
-  allowed=$( (grep -E "^${f}:[0-9]+ " tools/checks/allowed-casts.txt || true) | sed -E 's/^[^:]+:([0-9]+) .*/\1/')
+  allowed=$(awk -v f="$f" 'index($0, f ":") == 1 { split(substr($0, length(f) + 2), a, " "); print a[1] }' \
+    tools/checks/allowed-casts.txt)
   allowed=${allowed:-0}
   if [ "$n" -ne "$allowed" ]; then
     echo "casts: $f has $n unchecked 'as' cast(s), allowed $allowed (tools/checks/allowed-casts.txt)"
-    grep -nE '\bas\s+[A-Za-z(]' "$f" | grep -vE '^\d*:\s*import ' || true
+    grep -nE '\bas\s+[A-Za-z(]' "$f" | grep -vE '^[0-9]+:\s*import ' || true
     status=1
   fi
 done

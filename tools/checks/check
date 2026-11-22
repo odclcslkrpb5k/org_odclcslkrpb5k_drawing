@@ -3,10 +3,12 @@
 # - Gradle shows only lint's first finding, so every lint report is printed (AG-2).
 # - Every build warning fails the check unless allowed by exact text (TS-18).
 set -euo pipefail
+export LC_ALL=C
 cd "$(dirname "$0")/../.."
 log=$(mktemp)
 status=0
 tools/checks/casts || status=1
+tools/checks/vendored || status=1
 ./gradlew --offline --no-daemon --console=plain --warning-mode=all \
   ktfmtCheck \
   :core:detektMain :core:detektTest :app:detektMain :app:detektTest \

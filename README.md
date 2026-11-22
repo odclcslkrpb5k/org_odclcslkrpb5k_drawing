@@ -6,7 +6,7 @@ A finger-drawing and coloring app for a child's tablet: no ads, no purchases, no
 
 Needs Docker only.
 
-    docker compose -f docker/compose.yaml run --build --rm check
+    docker compose run --build --rm check
 
 runs every check offline: unit tests, Android Lint, and a release build.
 

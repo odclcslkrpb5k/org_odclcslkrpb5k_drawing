@@ -2,6 +2,7 @@
 # Plants one bug per control in a copy of the tree and asserts the control refuses it, for the
 # stated reason (TS-5, TS-15). Runs in the check container, offline. Usage: plants [name...]
 set -euo pipefail
+export LC_ALL=C
 root=$(cd "$(dirname "$0")/../.." && pwd)
 dir=$root/test-fixtures/plants
 mapfile -t names < <(if [ $# -gt 0 ]; then printf '%s\n' "$@"; else ls "$dir"; fi)
@@ -11,9 +12,9 @@ for name in "${names[@]}"; do
   work=$(mktemp -d)
   # The copy has its own build directory, so no plant reads another tree's output (TS-8).
   tar -C "$root" --exclude=./build --exclude=./.gradle -cf - . | tar -C "$work" -xf -
-  before=$(cd "$work" && find . -type f -not -path './test-fixtures/*' -exec sha256sum {} + | sort)
+  before=$(cd "$work" && find . -type f -not -path './test-fixtures/*' -printf '%m %p\n' -exec sha256sum {} + | sort)
   (cd "$work" && bash "$plant/apply")
-  after=$(cd "$work" && find . -type f -not -path './test-fixtures/*' -exec sha256sum {} + | sort)
+  after=$(cd "$work" && find . -type f -not -path './test-fixtures/*' -printf '%m %p\n' -exec sha256sum {} + | sort)
   if [ "$before" = "$after" ]; then
     echo "PLANT $name: apply changed nothing"; failed=1; rm -rf "$work"; continue
   fi

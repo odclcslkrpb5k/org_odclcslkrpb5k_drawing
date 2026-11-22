@@ -2,13 +2,15 @@
 # Fills Gradle's caches in the image build, from the build files and placeholder sources, so the
 # check can run offline. Failures here are tolerated: the offline check judges completeness.
 set -uo pipefail
+# It overwrites and then deletes core/src and app/src/main/kotlin, so it runs only in the image build.
+[ "${WARM_IN_IMAGE_BUILD:-}" = 1 ] || { echo "warm: refusing to run outside the image build" >&2; exit 2; }
 cd "$(dirname "$0")/../.."
 mkdir -p core/src/main/kotlin core/src/test/kotlin app/src/main/kotlin/org/odclcslkrpb5k/drawing
 printf 'package warm\n\nfun warm(): Int = 1\n' >core/src/main/kotlin/Warm.kt
 printf 'package warm\n\nimport io.kotest.core.spec.style.StringSpec\n\nclass WarmTest : StringSpec({ "w" { check(warm() == 1) } })\n' >core/src/test/kotlin/WarmTest.kt
 printf 'package org.odclcslkrpb5k.drawing\n\nclass MainActivity : android.app.Activity()\n' \
   >app/src/main/kotlin/org/odclcslkrpb5k/drawing/MainActivity.kt
-./gradlew --no-daemon --continue --quiet resolveAll ktfmtCheck \
+./gradlew --no-daemon --continue --console=plain resolveAll ktfmtCheck \
   :core:detektMain :core:detektTest :app:detektMain :app:detektTest test lint assembleRelease
 rm -rf core/src app/src/main/kotlin build
 exit 0
