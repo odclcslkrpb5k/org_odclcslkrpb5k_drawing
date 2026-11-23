@@ -1,0 +1,1 @@
+sed -i '/android:enableOnBackInvokedCallback="true"/d' app/src/main/AndroidManifest.xml

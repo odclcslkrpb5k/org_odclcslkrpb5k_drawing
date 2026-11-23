@@ -23,6 +23,12 @@ facts=$("$aapt2" dump xmltree --file AndroidManifest.xml "$apk" | awk '
   END { flush() }')
 
 want() { grep -qxF -- "$1" <<<"$facts" || { echo "apk: missing: $1"; status=1; }; }
+# Back reaches the app's OnBackInvokedCallbacks (pickers, the parent screen) on Android 15 too,
+# not only on 16, where targetSdk 36 makes it the default.
+# The dump is read whole first: grep -q on a pipe would stop its writer early (SIGPIPE).
+manifest=$("$aapt2" dump xmltree --file AndroidManifest.xml "$apk")
+grep -qE 'android:enableOnBackInvokedCallback\([^)]*\)=(\(type 0x12\))?(0xffffffff|true)' <<<"$manifest" ||
+  { echo "apk: the application does not declare enableOnBackInvokedCallback"; status=1; }
 want "uses-sdk - exported=false  minSdkVersion=35 targetSdkVersion=36"
 want "property android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY exported=false  value=true"
 activities=$(grep -E '^activity org\.odclcslkrpb5k\.' <<<"$facts" || true)
