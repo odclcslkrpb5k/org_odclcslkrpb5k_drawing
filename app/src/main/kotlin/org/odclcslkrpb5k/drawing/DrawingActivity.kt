@@ -1,6 +1,7 @@
 package org.odclcslkrpb5k.drawing
 
 import android.app.Activity
+import android.graphics.Bitmap
 import android.os.Bundle
 import android.util.Log
 import android.view.Gravity
@@ -12,6 +13,7 @@ import org.odclcslkrpb5k.drawing.adapters.Coloring
 import org.odclcslkrpb5k.drawing.adapters.Gallery
 import org.odclcslkrpb5k.drawing.adapters.InkLoader
 import org.odclcslkrpb5k.drawing.adapters.PageStore
+import org.odclcslkrpb5k.drawing.adapters.PhotoStore
 import org.odclcslkrpb5k.drawing.adapters.StoreError
 import org.odclcslkrpb5k.drawing.adapters.TemplateAssets
 import org.odclcslkrpb5k.drawing.core.Argb
@@ -47,6 +49,7 @@ private val SWATCHES =
 class DrawingActivity : Activity() {
     private val surface by lazy { DrawingSurface(this) }
     private val store by lazy { PageStore(filesDir) }
+    private val photos by lazy { PhotoStore(filesDir) }
     private val id by lazy { intent.getStringExtra(EXTRA_PAGE)?.let(PageId::parse) }
     /** The coloring page a new page starts from; ignored for a page already saved. */
     private val template by lazy {
@@ -136,32 +139,32 @@ class DrawingActivity : Activity() {
     }
 
     /**
-     * Opens the page once its coloring page, if it has one, is read on the disk thread. A coloring
-     * page that cannot be read (say, one a later version dropped) leaves the drawing to open plain.
+     * Opens the page once its coloring page and its photo, if it has them, are read on the disk
+     * thread. A coloring page that cannot be read (say, one a later version dropped), or a photo
+     * that cannot, leaves the drawing to open without it.
      */
     private fun withColoring(page: PageId, history: History) {
         val name = history.template
-        if (name == null) {
-            open(page, history, null)
-            return
-        }
         PageDisk.run(
-            { TemplateAssets.load(assets, name) },
-            failed = Outcome.Err("unexpected failure"),
-        ) { loaded ->
-            val coloring =
-                when (loaded) {
-                    is Outcome.Ok -> loaded.value
-                    is Outcome.Err -> null.also { Log.e(TAG, "coloring page: ${loaded.error}") }
+            {
+                val coloring = name?.let {
+                    when (val loaded = TemplateAssets.load(assets, it)) {
+                        is Outcome.Ok -> loaded.value
+                        is Outcome.Err -> null.also { Log.e(TAG, "coloring page: ${loaded.error}") }
+                    }
                 }
-            // The closing screen may have handed over a change while the coloring page was read.
-            if (!gone()) open(page, PageSaves.unsaved(page) ?: history, coloring)
+                coloring to photos.load(page)
+            },
+            failed = null to null,
+        ) { (coloring, photo) ->
+            // The closing screen may have handed over a change while the page's parts were read.
+            if (!gone()) open(page, PageSaves.unsaved(page) ?: history, coloring, photo)
         }
     }
 
-    private fun open(page: PageId, history: History, coloring: Coloring?) {
+    private fun open(page: PageId, history: History, coloring: Coloring?, photo: Bitmap?) {
         setContentView(layout(coloring != null))
-        surface.show(history, coloring)
+        surface.show(history, coloring, photo)
         opened = page
         PageSaves.open(page, this)
         surface.onChange = { changed ->

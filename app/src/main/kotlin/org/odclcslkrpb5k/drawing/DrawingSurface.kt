@@ -91,8 +91,9 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
      * Shows a page read from disk, replacing whatever is drawn, over [coloring] when it was started
      * from a coloring page (null if that page could not be read: the drawing still opens).
      */
-    fun show(page: History, coloring: Coloring?) {
+    fun show(page: History, coloring: Coloring?, photo: Bitmap? = null) {
         history = page
+        fills.photo = photo
         fillGestures.regions = coloring?.regions
         fills.coloring = coloring
         lines.lines = coloring?.lines

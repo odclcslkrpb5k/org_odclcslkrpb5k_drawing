@@ -7,10 +7,12 @@ import android.graphics.Canvas
 import android.graphics.Color
 import androidx.core.graphics.createBitmap
 import org.odclcslkrpb5k.drawing.adapters.Coloring
+import org.odclcslkrpb5k.drawing.adapters.PhotoStore
 import org.odclcslkrpb5k.drawing.adapters.TemplateAssets
 import org.odclcslkrpb5k.drawing.core.History
 import org.odclcslkrpb5k.drawing.core.Outcome
 import org.odclcslkrpb5k.drawing.core.Page
+import org.odclcslkrpb5k.drawing.core.PageId
 
 /**
  * Draws saved pages small, off screen, through the same layers the drawing screen shows: the parent
@@ -23,13 +25,17 @@ class PagePicture(context: Context) {
     private val lines = LinesView(context)
     private val stamps = StampsView(context)
 
-    fun draw(page: History, coloring: Coloring?): Bitmap {
+    fun draw(page: History, coloring: Coloring?, photo: Bitmap? = null): Bitmap {
+        fills.photo = photo
         fills.coloring = coloring
         lines.lines = coloring?.lines
         fills.show(page.fills)
         finished.show(page.strokes)
         stamps.stamps = page.stamps
-        return flatten(fills, finished, lines, stamps, THUMB_SCALE)
+        val picture = flatten(fills, finished, lines, stamps, THUMB_SCALE)
+        // A photo is a page-sized bitmap: not kept once drawn.
+        fills.photo = null
+        return picture
     }
 }
 
@@ -58,3 +64,17 @@ const val THUMB_SCALE = 6f
 /** The page's coloring page, or null when it has none or it cannot be read (disk thread). */
 internal fun coloringOf(assets: AssetManager, page: History?): Coloring? =
     page?.template?.let { name -> (TemplateAssets.load(assets, name) as? Outcome.Ok)?.value }
+
+/** What a page is drawn over, besides its own operations: its coloring page and its photo. */
+class Backing(val coloring: Coloring?, val photo: Bitmap?)
+
+/**
+ * The page's coloring page and photo, either null when it has none or it cannot be read (disk
+ * thread).
+ */
+internal fun backingOf(
+    assets: AssetManager,
+    photos: PhotoStore,
+    id: PageId,
+    page: History?,
+): Backing = Backing(coloringOf(assets, page), photos.load(id))

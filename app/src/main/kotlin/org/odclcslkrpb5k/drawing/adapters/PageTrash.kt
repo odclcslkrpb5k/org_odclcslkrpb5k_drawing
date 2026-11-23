@@ -8,11 +8,12 @@ import org.odclcslkrpb5k.drawing.core.PageId
 
 /**
  * Pages the parent put aside, under `trash/` (outside the backup): each page's directory with its
- * thumbnail beside it, so the trash shows what each page was and a page put back keeps its picture.
- * Only the parent screen uses it; nothing the child can reach deletes a page.
+ * thumbnail and photo beside it, so the trash shows what each page was and a page put back keeps
+ * its picture. Only the parent screen uses it; nothing the child can reach deletes a page.
  */
 class PageTrash(filesDir: File, private val store: PageStore) {
     private val trash = File(filesDir, "trash")
+    private val photos = PhotoStore(filesDir)
 
     /** Moves a saved page and its thumbnail to the trash. */
     fun trash(id: PageId): Outcome<Unit, StoreError> {
@@ -25,6 +26,7 @@ class PageTrash(filesDir: File, private val store: PageStore) {
             Log.w(TAG, "trash time not updated")
         }
         move(store.thumbFile(id), thumbFile(id))
+        move(photos.photoFile(id), photoFile(id))
         return Outcome.Ok(Unit)
     }
 
@@ -51,6 +53,9 @@ class PageTrash(filesDir: File, private val store: PageStore) {
         if (store.thumbs.isDirectory || store.thumbs.mkdirs()) {
             move(thumbFile(id), store.thumbFile(id))
         }
+        if (photos.dir.isDirectory || photos.dir.mkdirs()) {
+            move(photoFile(id), photos.photoFile(id))
+        }
         return Outcome.Ok(Unit)
     }
 
@@ -58,17 +63,20 @@ class PageTrash(filesDir: File, private val store: PageStore) {
     fun empty(): Outcome<Int, StoreError> {
         val all = list()
         val left = all.count { id ->
-            val thumb = thumbFile(id)
-            !File(trash, id.value).deleteRecursively() || (thumb.exists() && !thumb.delete())
+            val leftovers =
+                listOf(thumbFile(id), photoFile(id)).filter { it.exists() && !it.delete() }
+            !File(trash, id.value).deleteRecursively() || leftovers.isNotEmpty()
         }
         return if (left == 0) Outcome.Ok(all.size) else io("emptying ($left left)")
     }
 
     private fun thumbFile(id: PageId) = File(trash, "${id.value}.png")
 
-    /** A thumbnail that cannot follow its page is only logged: the page is what matters. */
+    private fun photoFile(id: PageId) = File(trash, "${id.value}.jpg")
+
+    /** A thumbnail or photo that cannot follow its page is only logged: the page matters most. */
     private fun move(from: File, to: File) {
-        if (from.exists() && !from.renameTo(to)) Log.w(TAG, "thumbnail not moved")
+        if (from.exists() && !from.renameTo(to)) Log.w(TAG, "${from.name} not moved")
     }
 
     private fun io(what: String): Outcome.Err<StoreError> {

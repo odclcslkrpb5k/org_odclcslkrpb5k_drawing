@@ -15,6 +15,7 @@ import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
 import org.odclcslkrpb5k.drawing.adapters.InkLoader
 import org.odclcslkrpb5k.drawing.adapters.PageStore
+import org.odclcslkrpb5k.drawing.adapters.PhotoStore
 import org.odclcslkrpb5k.drawing.adapters.TemplateAssets
 import org.odclcslkrpb5k.drawing.core.Outcome
 import org.odclcslkrpb5k.drawing.core.PageId
@@ -27,6 +28,8 @@ import org.odclcslkrpb5k.drawing.core.PageId
 class MainActivity : Activity() {
     private val store by lazy { PageStore(filesDir) }
     private val picture by lazy { PagePicture(this) }
+    private val photos by lazy { PhotoStore(filesDir) }
+    private val selfies by lazy { Selfies(this, { photos }, { store }) { open(it) } }
     private val grid by lazy { GridLayout(this).apply { columnCount = COLUMNS } }
     private var created = 0
 
@@ -42,6 +45,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        selfies.restore(savedInstanceState)
         val gate =
             HoldButton(this).apply {
                 contentDescription = "parent"
@@ -62,6 +66,17 @@ class MainActivity : Activity() {
                 )
             }
         )
+    }
+
+    @Deprecated("Activity's own result callback; this app uses no AndroidX activity results.")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        selfies.answered(requestCode, resultCode)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        selfies.save(outState)
     }
 
     override fun onResume() {
@@ -101,6 +116,20 @@ class MainActivity : Activity() {
                 .apply { background = tileShape() },
             tileParams(),
         )
+        // A page on a photo, when there is a camera app to take it.
+        if (selfies.available) {
+            grid.addView(
+                iconButton(R.drawable.ic_camera, "photo") {
+                        if (!opening) {
+                            // Like opening a page: further taps wait until home is back in front.
+                            opening = true
+                            selfies.take(PageId.next(System.currentTimeMillis(), created++))
+                        }
+                    }
+                    .apply { background = tileShape() },
+                tileParams(),
+            )
+        }
         for ((id, thumb) in pages) {
             val tile = tile(thumb, "drawing")
             tile.setOnClickListener { open(id) }
@@ -118,7 +147,7 @@ class MainActivity : Activity() {
         PageDisk.run(
             {
                 when (val page = store.load(id)) {
-                    is Outcome.Ok -> page.value to coloringOf(assets, page.value)
+                    is Outcome.Ok -> page.value to backingOf(assets, photos, id, page.value)
                     is Outcome.Err ->
                         null.also { Log.w(TAG, "page for a thumbnail: ${page.error}") }
                 }
@@ -127,7 +156,8 @@ class MainActivity : Activity() {
         ) { page ->
             if (page != null && !isDestroyed) {
                 InkLoader.whenLoaded {
-                    val thumb = picture.draw(page.first, page.second)
+                    val (drawn, backing) = page
+                    val thumb = picture.draw(drawn, backing.coloring, backing.photo)
                     if (!isDestroyed) tile.setImageBitmap(thumb)
                     // Kept only while still missing and the page still saved: a drawing screen may
                     // have written a newer one meanwhile, or the parent trashed the page.

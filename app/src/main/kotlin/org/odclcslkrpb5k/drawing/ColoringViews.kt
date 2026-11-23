@@ -13,8 +13,9 @@ import org.odclcslkrpb5k.drawing.core.Argb
 import org.odclcslkrpb5k.drawing.core.Page
 
 /**
- * A coloring page's filled regions, under the strokes, in a page-sized bitmap. A fill paints the
- * region's precomputed row runs, so it never searches the page; undo repaints every fill.
+ * The page's bottom: a photo she took (the selfie stretch), then a coloring page's filled regions,
+ * under the strokes, in a page-sized bitmap. A fill paints the region's precomputed row runs, so it
+ * never searches the page; undo repaints every fill.
  */
 class FillsView(context: Context) : View(context) {
     private val page = createBitmap(Page.WIDTH.toInt(), Page.HEIGHT.toInt())
@@ -24,6 +25,13 @@ class FillsView(context: Context) : View(context) {
 
     /** Page-to-view transform, shared with the other page layers. */
     var pageToView = Matrix()
+
+    /** A photo to draw on, the page's size; null on a page without one. */
+    var photo: Bitmap? = null
+        set(value) {
+            field = value
+            invalidate()
+        }
 
     /** The coloring page being filled; null on a blank page, where nothing is drawn. */
     var coloring: Coloring? = null
@@ -53,10 +61,12 @@ class FillsView(context: Context) : View(context) {
 
     /** Draws the fills, in page units, onto [canvas] (a thumbnail's). */
     fun drawPage(canvas: Canvas) {
+        photo?.let { canvas.drawBitmap(it, 0f, 0f, scaled) }
         if (coloring != null) canvas.drawBitmap(page, 0f, 0f, scaled)
     }
 
     override fun onDraw(canvas: Canvas) {
+        photo?.let { canvas.drawBitmap(it, pageToView, scaled) }
         if (coloring != null) canvas.drawBitmap(page, pageToView, scaled)
     }
 

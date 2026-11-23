@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The only files the camera app may write through the FileProvider: photos/. -->
+<paths>
+    <files-path name="photos" path="photos/" />
+</paths>

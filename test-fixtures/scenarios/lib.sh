@@ -201,3 +201,26 @@ reopen_saved() {
   printf '%s' "$top | grep -q MainActivity && { input tap $SAVED_TILE; t=\$((t + 1)); }; sleep 0.25; done; "
   printf '%s' "echo reopen: home after \$h checks, \$t taps, top: \$($top | tr -s ' ' | cut -c1-120)"
 }
+# With a camera app there, home's third tile takes a photo and the saved pages move one along.
+CAMERA_TILE="1158 167"
+SAVED_TILE_AFTER_CAMERA="1614 167"
+
+# Taps the centre of the first view with resource id $1, read from a fresh UI dump (another app's
+# buttons, such as the camera's, have ids but no fixed place); false when there is none.
+ui_tap() {
+  local bounds x1 y1 x2 y2
+  bounds=$(command adb exec-out uiautomator dump /dev/tty 2>/dev/null |
+    grep -oE "resource-id=\"$1\"[^>]*bounds=\"\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]\"" |
+    head -1 | grep -oE '\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]' || true)
+  [ -n "$bounds" ] || return 1
+  read -r x1 y1 x2 y2 <<<"$(tr '[],' '   ' <<<"$bounds")"
+  adb shell input tap $(((x1 + x2) / 2)) $(((y1 + y2) / 2))
+}
+
+# Taps view $2 as soon as it appears, within 20 s; $1 says what is awaited.
+ui_tap_when() {
+  local i
+  for i in $(seq 1 20); do ui_tap "$2" && return 0; sleep 1; done
+  echo "scenario: $1 did not appear within 20 s"
+  exit 1
+}

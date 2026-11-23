@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+    <!-- To see whether a camera app is there to take a photo (no camera permission is asked). -->
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
     <application
         android:name=".DrawingApp"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -42,5 +48,15 @@
             android:resizeableActivity="false"
             android:screenOrientation="sensorLandscape"
             tools:ignore="DiscouragedApi,NonResizeableActivity" />
+        <!-- Lets the camera app write a photo into photos/, and nowhere else. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.photos"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/photo_paths" />
+        </provider>
     </application>
 </manifest>

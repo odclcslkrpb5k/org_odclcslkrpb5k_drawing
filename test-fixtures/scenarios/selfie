@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# A page on a photo, taken by the tablet's camera app (on the emulator AOSP's camera, which shows a
+# generated scene). With the camera app disabled home has no camera tile; with it, the tile opens
+# the camera, the photo it takes opens as the page's bottom layer, a stroke goes over it, the
+# eraser takes the stroke and gives back exactly the photo under it, and home's tile shows it.
+set -euo pipefail
+. "$(dirname "$0")/lib.sh"
+camera=com.android.camera2
+PURPLE="122 75 224"
+# The emulator script turns the camera app off for every scenario; this one leaves it off again.
+trap 'command adb shell pm disable-user --user 0 $camera >/dev/null 2>&1 || true' EXIT
+# The camera app's own first-run questions are answered ahead of time.
+for p in CAMERA RECORD_AUDIO ACCESS_FINE_LOCATION ACCESS_COARSE_LOCATION; do
+  adb shell pm grant $camera android.permission.$p >/dev/null 2>&1 || true
+done
+
+adb shell pm disable-user --user 0 $camera >/dev/null
+adb shell am start -W -n $pkg/.MainActivity >/dev/null
+home_open
+capture selfie-no-camera
+failed=0
+colored $CAMERA_TILE 244 238 255 || { echo "scenario: a camera tile with no camera app to take the photo"; failed=1; }
+
+adb shell pm enable $camera >/dev/null
+adb shell am force-stop $pkg
+adb shell am start -W -n $pkg/.MainActivity >/dev/null
+home_open
+capture selfie-home
+inked $CAMERA_TILE || { echo "scenario: no camera tile with a camera app there"; failed=1; }
+tap $CAMERA_TILE
+ui_tap_when "the camera's shutter" "$camera:id/shutter_button"
+ui_tap_when "the camera's done button" "$camera:id/done_button"
+page_open
+capture selfie-photo
+
+# The photo fills the page: most of a grid of points on it is not blank paper.
+shown=0
+spot=""
+for y in 250 450 650 850 1050; do
+  for x in 400 700 1000 1300 1600; do
+    if inked $x $y; then
+      shown=$((shown + 1))
+      colored $x $y $PURPLE || spot=${spot:-"$x $y"}
+    fi
+  done
+done
+[ "$shown" -ge 15 ] || { echo "scenario: only $shown of 25 points show a photo"; failed=1; }
+[ -n "$spot" ] || { echo "scenario: no photo point to draw over"; exit 1; }
+read -r sx sy <<<"$spot"
+read -r pr pg pb <<<"$(pixel "$sx" "$sy")"
+
+adb shell "$(stroke $((sx - 150)) "$sy" $((sx + 150)) "$sy")"
+sleep 1
+capture selfie-stroke
+colored "$sx" "$sy" $PURPLE || { echo "scenario: a stroke does not show over the photo"; failed=1; }
+tap $BRUSH_BUTTON
+sleep 1
+tap $ERASER
+sleep 1
+adb shell "$(stroke $((sx - 150)) "$sy" $((sx + 150)) "$sy")"
+sleep 1
+capture selfie-erased
+colored "$sx" "$sy" "$pr" "$pg" "$pb" || { echo "scenario: the eraser did not give back the photo under the stroke"; failed=1; }
+
+tap $HOME_BUTTON
+home_open
+capture selfie-tile
+inked_column ${SAVED_TILE_AFTER_CAMERA% *} 60 280 || { echo "scenario: home's tile does not show the photo"; failed=1; }
+no_errors
+[ "$failed" -eq 0 ] || exit 1
+echo "scenario selfie: hidden without a camera; photo taken, drawn on, erased over, on home"

@@ -22,6 +22,8 @@ hw.lcd.density=240
 hw.keyboard=yes
 hw.ramSize=4096
 hw.initialOrientation=landscape
+hw.camera.back=emulated
+hw.camera.front=emulated
 disk.dataPartition.size=4G
 CFG
 fi
@@ -45,6 +47,9 @@ adb shell settings put global animator_duration_scale 0
 # The one-time "Viewing full screen" notice would swallow the scenario's input; a parent dismisses
 # it once on the tablet during setup.
 adb shell settings put secure immersive_mode_confirmations confirmed
+# The image's camera app would put a camera tile on home in every scenario and move the saved
+# pages along; it is off unless a scenario turns it on (selfie does, and turns it off again).
+adb shell pm disable-user --user 0 com.android.camera2 >/dev/null
 echo "emulator: booted ($(adb shell getprop ro.build.version.release | tr -d '\r'), API $(adb shell getprop ro.build.version.sdk | tr -d '\r'), $(adb shell wm size | tr -d '\r'))"
 
 ./gradlew --offline --no-daemon --console=plain -q :app:assembleDebug

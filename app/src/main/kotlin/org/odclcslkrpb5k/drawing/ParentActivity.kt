@@ -12,6 +12,7 @@ import android.window.OnBackInvokedDispatcher
 import org.odclcslkrpb5k.drawing.adapters.InkLoader
 import org.odclcslkrpb5k.drawing.adapters.PageStore
 import org.odclcslkrpb5k.drawing.adapters.PageTrash
+import org.odclcslkrpb5k.drawing.adapters.PhotoStore
 import org.odclcslkrpb5k.drawing.adapters.StoreError
 import org.odclcslkrpb5k.drawing.core.History
 import org.odclcslkrpb5k.drawing.core.Outcome
@@ -29,6 +30,7 @@ class ParentActivity : Activity() {
     private val store by lazy { PageStore(filesDir) }
     private val trash by lazy { PageTrash(filesDir, store) }
     private val picture by lazy { PagePicture(this) }
+    private val photos by lazy { PhotoStore(filesDir) }
     private val column by lazy { LinearLayout(this).apply { orientation = LinearLayout.VERTICAL } }
 
     /** While one page's versions are shown, Back returns to the list. */
@@ -132,7 +134,12 @@ class ParentActivity : Activity() {
                 when (val all = store.versions(id)) {
                     is Outcome.Ok ->
                         all.value to
-                            coloringOf(assets, all.value.firstNotNullOfOrNull { it.second })
+                            backingOf(
+                                assets,
+                                photos,
+                                id,
+                                all.value.firstNotNullOfOrNull { it.second },
+                            )
                     is Outcome.Err -> null
                 }
             },
@@ -140,13 +147,15 @@ class ParentActivity : Activity() {
         ) { found ->
             if (found == null) Log.w(TAG, "versions not read")
             if (!gone() && found != null) {
-                val (all, coloring) = found
+                val (all, backing) = found
                 // Drawing strokes touches Ink, which may be used only once it is loaded.
                 InkLoader.whenLoaded {
                     if (!gone()) {
                         showVersions(
                             id,
-                            all.map { (n, page) -> n to page?.let { picture.draw(it, coloring) } },
+                            all.map { (n, page) ->
+                                n to page?.let { picture.draw(it, backing.coloring, backing.photo) }
+                            },
                         )
                     }
                 }
@@ -186,7 +195,7 @@ class ParentActivity : Activity() {
         PageDisk.run(
             {
                 when (val page = store.restoreVersion(id, n)) {
-                    is Outcome.Ok -> page.value to coloringOf(assets, page.value)
+                    is Outcome.Ok -> page.value to backingOf(assets, photos, id, page.value)
                     is Outcome.Err -> null.also { Log.w(TAG, "roll back failed: ${page.error}") }
                 }
             },
@@ -197,7 +206,8 @@ class ParentActivity : Activity() {
                 if (!gone()) refresh()
             } else {
                 InkLoader.whenLoaded {
-                    val thumb = picture.draw(restored.first, restored.second)
+                    val (page, backing) = restored
+                    val thumb = picture.draw(page, backing.coloring, backing.photo)
                     act(id) { store.saveThumbnail(id, thumb) }
                 }
             }
