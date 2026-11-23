@@ -12,6 +12,8 @@ import android.widget.GridLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import org.odclcslkrpb5k.drawing.core.BackupBudget
+import org.odclcslkrpb5k.drawing.core.BackupState
 import org.odclcslkrpb5k.drawing.core.PageId
 
 // The parent screen's views. Unlike the child's screens, it has words: a parent reads them.
@@ -75,6 +77,24 @@ internal fun Context.parentTileParams() =
         setMargins(dp(PARENT_PAD), dp(PARENT_PAD), dp(PARENT_PAD), dp(PARENT_PAD))
     }
 
+/** How much of Google's backup allowance the drawings use, in a color that says whether to act. */
+internal fun Context.backupLine(bytes: Long): TextView {
+    val size = BackupBudget.megabytes(bytes)
+    val (text, color) =
+        when (BackupBudget.state(bytes)) {
+            BackupState.FINE -> getString(R.string.parent_backup_fine, size) to BACKUP_FINE
+            BackupState.NEARLY_FULL ->
+                getString(R.string.parent_backup_nearly_full, size) to BACKUP_WARN
+            BackupState.OVER -> getString(R.string.parent_backup_over, size) to BACKUP_OVER
+        }
+    return TextView(this).apply {
+        this.text = text
+        setTextColor(color)
+        textSize = TEXT_SP
+        setPadding(dp(PARENT_PAD), 0, dp(PARENT_PAD), dp(PARENT_PAD))
+    }
+}
+
 internal const val PARENT_COLUMNS = 4
 internal const val PARENT_PAD = 12
 private const val MATCH = MATCH_PARENT
@@ -84,3 +104,6 @@ private const val TILE_H = 175
 private const val CORNER = 24
 private const val TEXT_SP = 20f
 private const val TILE = 0xFFFFFFFF.toInt()
+private const val BACKUP_FINE = 0xFF5D5D5D.toInt()
+private const val BACKUP_WARN = 0xFFE65100.toInt()
+private const val BACKUP_OVER = 0xFFC62828.toInt()

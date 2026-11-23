@@ -24,6 +24,16 @@ home_bg || { echo "scenario: one finger held on the dot opened something"; exit 
 hold2 $GATE_FINGERS 4
 parent_open
 capture gate-parent
+# The backup line says how much of Google's 25 MB the drawings use (read from the UI dump: the
+# dump is read whole before grep, which would otherwise stop its writer early).
+# It loads after the lists, so it is waited for; a page was drawn, so it is more than 0.0 MB.
+backup_shown() {
+  local ui
+  ui=$(command adb exec-out uiautomator dump /dev/tty 2>/dev/null || true)
+  grep -qE 'text="Google backup: ([1-9][0-9]*\.[0-9]|0\.[1-9]) MB of the 25 MB' <<<"$ui"
+}
+for _ in $(seq 1 20); do backup_shown && break; sleep 1; done
+backup_shown || { echo "scenario: the parent screen shows no backup size above 0.0 MB"; exit 1; }
 tap $VERSIONS_ACTION
 wait_for "the versions" colored ${OLDER_VERSION% *} 299 255 255 255
 capture gate-versions

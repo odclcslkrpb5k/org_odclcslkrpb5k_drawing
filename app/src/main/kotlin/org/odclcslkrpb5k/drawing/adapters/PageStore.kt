@@ -7,6 +7,7 @@ import android.util.Log
 import androidx.core.util.tryWrite
 import java.io.File
 import java.io.IOException
+import org.odclcslkrpb5k.drawing.core.BackupBudget
 import org.odclcslkrpb5k.drawing.core.History
 import org.odclcslkrpb5k.drawing.core.Outcome
 import org.odclcslkrpb5k.drawing.core.PageCodec
@@ -166,3 +167,15 @@ class PageStore(filesDir: File) {
 /** A PNG file decoded, or null when there is none (or it does not decode). */
 internal fun decodePng(file: File): Bitmap? =
     file.takeIf { it.isFile }?.let { BitmapFactory.decodeFile(it.path) }
+
+/**
+ * Bytes of everything Auto Backup carries (drawings/, every kept version), with the backup's own
+ * per-entry cost: what counts against Google's allowance (core BackupBudget). Negative when part of
+ * drawings/ cannot be read, so the parent sees no size rather than a size too small. Disk thread.
+ */
+fun PageStore.backupBytes(): Long {
+    var unreadable = false
+    val entries = pages.walkTopDown().onFail { _, _ -> unreadable = true }.toList()
+    if (unreadable) return -1L
+    return entries.sumOf { (if (it.isFile) it.length() else 0L) + BackupBudget.PER_ENTRY }
+}

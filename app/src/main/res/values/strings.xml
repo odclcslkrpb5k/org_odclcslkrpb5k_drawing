@@ -5,4 +5,7 @@
     <string name="parent_drawings">Drawings: put one in the trash, or go back to an older version</string>
     <string name="parent_versions">Versions, newest first: tap one to make it the newest again</string>
     <string name="parent_trash">Trash: tap one to put it back. Hold the bin with two fingers to empty it for good</string>
+    <string name="parent_backup_fine">Google backup: %1$s MB of the 25 MB it keeps for this app.</string>
+    <string name="parent_backup_nearly_full">Google backup nearly full: %1$s MB of 25 MB. Over 25 MB nothing is backed up at all. Drawings in the trash are not backed up: put old ones there.</string>
+    <string name="parent_backup_over">Google backup is over its 25 MB (%1$s MB): nothing is being backed up. Drawings in the trash are not backed up: put old ones there.</string>
 </resources>

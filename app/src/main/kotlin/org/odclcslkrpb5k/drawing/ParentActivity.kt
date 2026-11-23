@@ -14,6 +14,7 @@ import org.odclcslkrpb5k.drawing.adapters.PageStore
 import org.odclcslkrpb5k.drawing.adapters.PageTrash
 import org.odclcslkrpb5k.drawing.adapters.PhotoStore
 import org.odclcslkrpb5k.drawing.adapters.StoreError
+import org.odclcslkrpb5k.drawing.adapters.backupBytes
 import org.odclcslkrpb5k.drawing.core.History
 import org.odclcslkrpb5k.drawing.core.Outcome
 import org.odclcslkrpb5k.drawing.core.PageId
@@ -70,9 +71,10 @@ class ParentActivity : Activity() {
                 Lists(
                     store.list().map { it to store.thumbnail(it) },
                     trash.list().map { it to trash.thumbnail(it) },
+                    store.backupBytes(),
                 )
             },
-            failed = Lists(emptyList(), emptyList()),
+            failed = Lists(emptyList(), emptyList(), -1L),
         ) {
             if (!gone()) show(it)
         }
@@ -81,6 +83,8 @@ class ParentActivity : Activity() {
     private class Lists(
         val saved: List<Pair<PageId, Bitmap?>>,
         val trashed: List<Pair<PageId, Bitmap?>>,
+        /** Bytes Auto Backup carries; negative when they could not be counted. */
+        val backup: Long,
     )
 
     private fun show(lists: Lists) {
@@ -109,6 +113,8 @@ class ParentActivity : Activity() {
                 )
             }
         )
+        // Last, so the lists above keep their places.
+        if (lists.backup >= 0) column.addView(backupLine(lists.backup))
     }
 
     /**
