@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# A drawing whose coloring page the app no longer has (a later version dropped or renamed it) still
+# opens, plain: her strokes are there, the lost line art and fills are not drawn, and she can keep
+# drawing. The page keeps naming its coloring page, so its fills come back if the page ever does.
+# The page is made on the unicorn, then the saved file is edited to name "unicorx", which no build
+# has (same length, so nothing else in the file moves).
+set -euo pipefail
+. "$(dirname "$0")/lib.sh"
+PURPLE="122 75 224"
+files="files/drawings/*/v*.page"
+# The newest whole saved version's file name (a write cut short can leave vN.page.new beside it).
+newest() {
+  command adb shell run-as $pkg sh -c "'ls files/drawings/*/'" | tr -d '\r' | grep -E '^v[0-9]+\.page$' | sort -V | tail -1
+}
+adb shell am start -W -n $pkg/.MainActivity >/dev/null
+home_open
+tap $COLORING_TILE
+picker_open
+tap $FIRST_COLORING
+page_open
+tap $FILL_BUTTON
+sleep 1
+tap 888 684
+sleep 1
+tap $FILL_BUTTON
+sleep 1
+adb shell "$(stroke 400 180 800 180)"
+sleep 1
+capture missing-made
+failed=0
+colored 888 684 $PURPLE || { echo "scenario: the setup fill did not land"; exit 1; }
+inked 600 180 || { echo "scenario: the setup stroke did not land"; exit 1; }
+tap $HOME_BUTTON
+home_open
+sleep 1
+adb shell am force-stop $pkg
+adb shell run-as $pkg sh -c "'for f in $files; do sed -i s/unicorn/unicorx/ \$f; done'"
+[ "$(adb shell run-as $pkg sh -c "'cat $files'" | grep -ac unicorn || true)" -eq 0 ] &&
+  [ "$(adb shell run-as $pkg sh -c "'cat $files'" | grep -ac unicorx || true)" -ge 1 ] ||
+  { echo "scenario: the saved page was not edited to name unicorx"; exit 1; }
+before=$(newest)
+
+adb shell am start -W -n $pkg/.MainActivity >/dev/null
+home_open
+tap $SAVED_TILE
+page_open
+capture missing-opened
+inked 600 180 || { echo "scenario: her stroke is gone from a page whose coloring page is missing"; failed=1; }
+inked 972 1010 && { echo "scenario: line art shown for a coloring page the app does not have"; failed=1; }
+inked 888 684 && { echo "scenario: a fill drawn without its coloring page"; failed=1; }
+adb shell "$(stroke 400 300 800 300)"
+sleep 1
+tap $HOME_BUTTON
+home_open
+sleep 1
+adb shell am force-stop $pkg
+after=$(newest)
+[ "${after//[^0-9]/}" -gt "${before//[^0-9]/}" ] ||
+  { echo "scenario: no new version saved after drawing on the plain page ($before, $after)"; exit 1; }
+adb shell run-as $pkg sh -c "'cat files/drawings/*/$after'" | grep -aq unicorx ||
+  { echo "scenario: the page no longer names its coloring page after a change"; failed=1; }
+
+# The coloring page comes back (named right again, as a later build might restore it): the fill
+# made before it went missing is still in the page, and both strokes.
+adb shell run-as $pkg sh -c "'for f in $files; do sed -i s/unicorx/unicorn/ \$f; done'"
+adb shell am start -W -n $pkg/.MainActivity >/dev/null
+home_open
+tap $SAVED_TILE
+page_open
+capture missing-returned
+inked 972 1010 || { echo "scenario: the line art did not come back with the coloring page"; failed=1; }
+colored 888 684 $PURPLE || { echo "scenario: the fill was lost while the coloring page was missing"; failed=1; }
+inked 600 180 || { echo "scenario: the first stroke is gone"; failed=1; }
+inked 600 300 || { echo "scenario: the stroke drawn on the plain page is gone"; failed=1; }
+no_errors 'E DrawingActivity: coloring page: unicorx\.rgn unreadable' 'W TemplateAssets: templates/unicorx\.rgn not read'
+[ "$failed" -eq 0 ] || exit 1
+echo "scenario missing-coloring: opened plain, strokes kept; fills and lines back with the coloring page"

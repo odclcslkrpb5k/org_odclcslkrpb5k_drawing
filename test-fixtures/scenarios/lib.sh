@@ -44,9 +44,11 @@ inked() { fresh; local r g b; read -r r g b <<<"$(pixel "$1" "$2")"; [ "$r" -lt 
 
 # Fails the scenario on a crash (Java or native), an ANR, a StrictMode violation in the app's
 # process, Ink refusing input, or any failure the app logs; each failing check prints what it found.
-# The log is cleared before each scenario (see all), so only this scenario's lines count.
+# The log is cleared before each scenario (see all), so only this scenario's lines count. Optional
+# arguments name, each as a regex, the app failures the scenario provokes: each must be logged, and
+# only lines matching one of them are let through.
 no_errors() {
-  local log=$OUT_DIR/logcat.txt failed=0 pid found errors allowed
+  local log=$OUT_DIR/logcat.txt failed=0 pid found errors allowed e
   adb logcat -d >"$log"
   # Injected input is stamped up to a few ms ahead of the clock Ink renders by, which Ink reports
   # and skips for that frame; real touches carry past timestamps. Only that, under 100 ms, is
@@ -63,6 +65,10 @@ no_errors() {
     sed -E 's/.*"(.*)"/\1/' | sort -u | paste -sd'|')
   [ -n "$tags" ] || { echo "scenario: no app log tags found in the source"; exit 1; }
   found=$(grep -E " [WEF] ($tags)( *):" "$log" || true)
+  for e in "$@"; do
+    grep -qE "$e" <<<"$found" || { echo "scenario: the app did not log the expected failure /$e/"; failed=1; }
+    found=$(grep -vE "$e" <<<"$found" || true)
+  done
   [ -z "$found" ] || { echo "scenario: the app logged a failure:"; echo "$found"; failed=1; }
   found=$(grep -E "Process: $pkg|>>> $pkg <<<|Fatal signal|ANR in $pkg" "$log" || true)
   [ -z "$found" ] || { echo "scenario: the app crashed or stopped responding:"; echo "$found"; failed=1; }
@@ -123,6 +129,7 @@ wait_for() {
     sleep 0.5
   done
   echo "scenario: $what did not appear within 20 s"
+  cp "$OUT_DIR/waiting.png" "$OUT_DIR/timeout.png"
   # The scenario's own log, for the reason: a timeout would otherwise leave the previous one's.
   command adb logcat -d >"$OUT_DIR/logcat.txt"
   grep -E "AndroidRuntime|Process: $pkg|Fatal signal|ANR in $pkg|StrictMode|Displayed $pkg|START u0" "$OUT_DIR/logcat.txt" | tail -15
@@ -187,7 +194,8 @@ EMPTY_TRASH_KEPT_FINGERS="100 630 146 630"
 # after the page opened would draw on it, so each tap is sent only while home is in front.
 reopen_saved() {
   local top="dumpsys activity activities | grep -E 'topResumedActivity=.*$pkg/'"
-  printf '%s' "for i in \$(seq 1 100); do $top | grep -q MainActivity && break; sleep 0.1; done; "
+  printf '%s' "h=0; t=0; for i in \$(seq 1 100); do $top | grep -q MainActivity && break; h=\$i; sleep 0.1; done; "
   printf '%s' "for i in \$(seq 1 80); do $top | grep -q DrawingActivity && break; "
-  printf '%s' "$top | grep -q MainActivity && input tap $SAVED_TILE; sleep 0.25; done"
+  printf '%s' "$top | grep -q MainActivity && { input tap $SAVED_TILE; t=\$((t + 1)); }; sleep 0.25; done; "
+  printf '%s' "echo reopen: home after \$h checks, \$t taps, top: \$($top | tr -s ' ' | cut -c1-120)"
 }
