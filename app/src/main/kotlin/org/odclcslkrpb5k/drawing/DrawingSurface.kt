@@ -122,8 +122,11 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
         settled(block, 0)
     }
 
-    /** The page, strokes and stamps, small, for the gallery. */
-    fun thumbnail(): Bitmap = thumbnail(fills, finished, lines, stampsView)
+    /**
+     * The page flattened, one bitmap pixel per [scale] page units: [THUMB_SCALE] for home's
+     * thumbnails, 1 for the tablet's gallery.
+     */
+    fun picture(scale: Float): Bitmap = flatten(fills, finished, lines, stampsView, scale)
 
     private fun settled(block: () -> Unit, frames: Int) {
         when {

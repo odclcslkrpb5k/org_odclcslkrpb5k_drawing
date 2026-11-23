@@ -9,6 +9,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.window.OnBackInvokedDispatcher
 import org.odclcslkrpb5k.drawing.adapters.Coloring
+import org.odclcslkrpb5k.drawing.adapters.Gallery
 import org.odclcslkrpb5k.drawing.adapters.InkLoader
 import org.odclcslkrpb5k.drawing.adapters.PageStore
 import org.odclcslkrpb5k.drawing.adapters.StoreError
@@ -52,6 +53,9 @@ class DrawingActivity : Activity() {
         intent.getStringExtra(EXTRA_TEMPLATE)?.takeIf { Templates.isName(it) }
     }
     private var opened: PageId? = null
+
+    /** The page changed since its picture was last sent to the tablet's gallery. */
+    private var unexported = false
     private val swatches = mutableListOf<View>()
     private val stamps: StampTray by lazy {
         StampTray(this, onOpen = { brushes.close() }) { face ->
@@ -161,7 +165,8 @@ class DrawingActivity : Activity() {
         opened = page
         PageSaves.open(page, this)
         surface.onChange = { changed ->
-            PageSaves.changed(store, page, this, changed, surface.thumbnail())
+            unexported = true
+            PageSaves.changed(store, page, this, changed, surface.picture(THUMB_SCALE))
             // A stroke Ink hands back as the screen leaves is saved at once, not after the pause.
             if (isFinishing) PageSaves.flush(store, page)
         }
@@ -291,9 +296,31 @@ class DrawingActivity : Activity() {
         if (opened == null) finish() else surface.leaving { finish() }
     }
 
+    /**
+     * The page is saved now, and, if it changed, its picture goes to the tablet's gallery: once per
+     * visit rather than per stroke, as a full-size picture is far larger than the page. The export
+     * is queued behind the save (which [PageSaves.flush] posts to this thread first), so the page
+     * reaches the disk before its slower copy does. A failed export is tried at the next pause.
+     */
     override fun onPause() {
         super.onPause()
-        opened?.let { PageSaves.flush(store, it) }
+        val page = opened ?: return
+        PageSaves.flush(store, page)
+        if (unexported) {
+            unexported = false
+            val picture = surface.picture(1f)
+            window.decorView.post {
+                PageDisk.run({ Gallery.export(contentResolver, page, picture) }, failed = null) {
+                    if (it !is Outcome.Ok) {
+                        Log.w(
+                            TAG,
+                            "picture not exported: ${(it as? Outcome.Err)?.error ?: "unexpected"}",
+                        )
+                        unexported = true
+                    }
+                }
+            }
+        }
     }
 
     override fun onDestroy() {

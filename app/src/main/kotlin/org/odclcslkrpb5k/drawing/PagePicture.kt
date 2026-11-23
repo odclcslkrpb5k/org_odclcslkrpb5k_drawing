@@ -1,12 +1,15 @@
 package org.odclcslkrpb5k.drawing
 
 import android.content.Context
+import android.content.res.AssetManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import androidx.core.graphics.createBitmap
 import org.odclcslkrpb5k.drawing.adapters.Coloring
+import org.odclcslkrpb5k.drawing.adapters.TemplateAssets
 import org.odclcslkrpb5k.drawing.core.History
+import org.odclcslkrpb5k.drawing.core.Outcome
 import org.odclcslkrpb5k.drawing.core.Page
 
 /**
@@ -26,27 +29,32 @@ class PagePicture(context: Context) {
         fills.show(page.fills)
         finished.show(page.strokes)
         stamps.stamps = page.stamps
-        return thumbnail(fills, finished, lines, stamps)
+        return flatten(fills, finished, lines, stamps, THUMB_SCALE)
     }
 }
 
-/** The page's layers, bottom to top, small, for the gallery. */
-fun thumbnail(
+/** The page's layers, bottom to top, one bitmap pixel per page unit over [scale]. */
+fun flatten(
     fills: FillsView,
     finished: FinishedStrokesView,
     lines: LinesView,
     stamps: StampsView,
+    scale: Float,
 ): Bitmap {
-    val thumb =
-        createBitmap((Page.WIDTH / THUMB_SCALE).toInt(), (Page.HEIGHT / THUMB_SCALE).toInt())
-    val canvas = Canvas(thumb)
-    canvas.scale(1f / THUMB_SCALE, 1f / THUMB_SCALE)
+    val picture = createBitmap((Page.WIDTH / scale).toInt(), (Page.HEIGHT / scale).toInt())
+    val canvas = Canvas(picture)
+    canvas.scale(1f / scale, 1f / scale)
     canvas.drawColor(Color.WHITE)
     fills.drawPage(canvas)
     finished.drawPage(canvas)
     lines.drawPage(canvas)
     stamps.drawOnPage(canvas)
-    return thumb
+    return picture
 }
 
-private const val THUMB_SCALE = 6f
+/** Page units per thumbnail pixel. */
+const val THUMB_SCALE = 6f
+
+/** The page's coloring page, or null when it has none or it cannot be read (disk thread). */
+internal fun coloringOf(assets: AssetManager, page: History?): Coloring? =
+    page?.template?.let { name -> (TemplateAssets.load(assets, name) as? Outcome.Ok)?.value }

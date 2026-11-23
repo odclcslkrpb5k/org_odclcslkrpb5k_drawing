@@ -1,0 +1,1 @@
+sed -i 's|<include domain="file" path="drawings/" />|&\n        <include domain="file" path="thumbs/" />|' app/src/main/res/xml/data_extraction_rules.xml

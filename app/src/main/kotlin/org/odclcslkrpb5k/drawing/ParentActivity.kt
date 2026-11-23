@@ -1,7 +1,6 @@
 package org.odclcslkrpb5k.drawing
 
 import android.app.Activity
-import android.content.res.AssetManager
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.util.Log
@@ -10,12 +9,10 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
-import org.odclcslkrpb5k.drawing.adapters.Coloring
 import org.odclcslkrpb5k.drawing.adapters.InkLoader
 import org.odclcslkrpb5k.drawing.adapters.PageStore
 import org.odclcslkrpb5k.drawing.adapters.PageTrash
 import org.odclcslkrpb5k.drawing.adapters.StoreError
-import org.odclcslkrpb5k.drawing.adapters.TemplateAssets
 import org.odclcslkrpb5k.drawing.core.History
 import org.odclcslkrpb5k.drawing.core.Outcome
 import org.odclcslkrpb5k.drawing.core.PageId
@@ -240,7 +237,3 @@ internal fun PageStore.restoreVersion(id: PageId, n: Long): Outcome<History, Sto
         }
         is Outcome.Err -> all
     }
-
-/** The page's coloring page, or null when it has none or it cannot be read (disk thread). */
-internal fun coloringOf(assets: AssetManager, page: History?): Coloring? =
-    page?.template?.let { name -> (TemplateAssets.load(assets, name) as? Outcome.Ok)?.value }

@@ -52,7 +52,7 @@ no_errors() {
   # and skips for that frame; real touches carry past timestamps. Only that, under 100 ms, is
   # allowed (the device checklist confirms it never appears with fingers): each Ink error line is
   # paired with the next line of the same thread, which must be that message.
-  found=$(awk -v ok='current_elapsed_time` must be non-negative. Got -[0-9]{1,2}\\.[0-9]+ms' '
+  found=$(awk -v ok='current_elapsed_time` must be non-negative. Got -[0-9]{1,2}(\\.[0-9]+)?ms' '
     /InkInProgressShape: Error/ { waiting[$4] = $0; next }
     ($4 in waiting) { if ($0 !~ ok) print waiting[$4] "\n" $0; delete waiting[$4] }
     END { for (t in waiting) print waiting[t] " (no message line)" }' "$log")

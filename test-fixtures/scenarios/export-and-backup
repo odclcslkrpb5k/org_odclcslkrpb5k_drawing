@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# A changed page's picture reaches the tablet's gallery (Pictures/Drawing) when she leaves it, and
+# is written over, not duplicated, when she changes it again; a visit without a change leaves it
+# alone. Then Auto Backup: back up, wipe the app's data, restore; the drawing is back on home with a
+# thumbnail drawn again (thumbnails are not backed up), and it opens with its stroke.
+set -euo pipefail
+. "$(dirname "$0")/lib.sh"
+dir=/sdcard/Pictures/Drawing
+# The gallery's pictures of this scenario's page (earlier scenarios leave theirs: pm clear keeps
+# shared storage), as "<modified> <size> <path>" lines; a rewrite changes the time even when the
+# picture is the same.
+page=""
+pictures() {
+  [ -n "$page" ] || page=$(command adb shell run-as $pkg ls files/drawings | tr -d '\r' | head -1)
+  command adb shell "ls $dir/$page*.png >/dev/null 2>&1 && stat -c '%.9Y %s %n' $dir/$page*.png" | tr -d '\r' | sort
+}
+# Waits up to 10 s for the pictures to differ from $1.
+pictures_change() {
+  local i now
+  for i in $(seq 1 20); do now=$(pictures); [ "$now" != "$1" ] && { echo "$now"; return 0; }; sleep 0.5; done
+  echo "$1"
+}
+
+adb shell am start -W -n $pkg/.MainActivity >/dev/null
+home_open
+tap $NEW_TILE
+page_open
+adb shell "$(stroke 300 300 900 300)"
+sleep 1
+tap $HOME_BUTTON
+home_open
+first=$(pictures_change "")
+echo "pictures: $first"
+failed=0
+[ "$(wc -l <<<"$first")" -eq 1 ] && [ -n "$first" ] || { echo "scenario: no single picture after leaving a changed page: '$first'"; exit 1; }
+
+sleep 1.5
+tap $SAVED_TILE
+page_open
+sleep 1
+tap $HOME_BUTTON
+home_open
+sleep 3
+[ "$(pictures)" = "$first" ] || { echo "scenario: a visit without a change rewrote the picture"; failed=1; }
+
+tap $SAVED_TILE
+page_open
+adb shell "$(stroke 300 800 900 800)"
+sleep 1
+tap $HOME_BUTTON
+home_open
+second=$(pictures_change "$first")
+[ "$second" != "$first" ] || { echo "scenario: changing the page did not rewrite its picture"; failed=1; }
+[ "$(wc -l <<<"$second")" -eq 1 ] || { echo "scenario: changing the page made another picture: $second"; failed=1; }
+
+# Auto Backup through the emulator's local transport.
+adb shell bmgr enable true >/dev/null
+adb shell bmgr transport com.android.localtransport/.LocalTransport >/dev/null
+adb shell bmgr backupnow $pkg | tail -2
+adb shell pm clear $pkg >/dev/null
+[ -z "$(adb shell run-as $pkg ls files 2>/dev/null | tr -d '\r')" ] || { echo "scenario: the data was not wiped"; exit 1; }
+adb shell bmgr restore 1 $pkg | tail -2 || true
+adb shell run-as $pkg ls -R files | tr -d '\r' | head -10
+adb shell am start -W -n $pkg/.MainActivity >/dev/null
+home_open
+# The thumbnail is drawn again from the page a moment after home shows.
+wait_for "the restored page's thumbnail" inked_column 1141 60 280
+capture backup-restored-home
+tap $SAVED_TILE
+page_open
+capture backup-restored
+inked 600 300 || { echo "scenario: the restored page lost its first stroke"; failed=1; }
+inked 600 800 || { echo "scenario: the restored page lost its second stroke"; failed=1; }
+# After the restore the old picture is no longer the app's; changes make one new picture, then keep
+# writing that one.
+adb shell "$(stroke 1000 1000 1400 1000)"
+sleep 1
+tap $HOME_BUTTON
+home_open
+third=$(pictures_change "$second")
+tap $SAVED_TILE
+page_open
+adb shell "$(stroke 1000 600 1400 600)"
+sleep 1
+tap $HOME_BUTTON
+home_open
+fourth=$(pictures_change "$third")
+echo "pictures after the restore:"; echo "$fourth"
+[ "$fourth" != "$third" ] || { echo "scenario: a change after the restore did not rewrite its picture"; failed=1; }
+[ "$(wc -l <<<"$fourth")" -le 2 ] && [ "$(wc -l <<<"$fourth")" -eq "$(wc -l <<<"$third")" ] ||
+  { echo "scenario: changes after the restore keep adding pictures:"; echo "$fourth"; failed=1; }
+no_errors
+[ "$failed" -eq 0 ] || exit 1
+echo "scenario export-and-backup: exported once per change, kept in place; backed up and restored"

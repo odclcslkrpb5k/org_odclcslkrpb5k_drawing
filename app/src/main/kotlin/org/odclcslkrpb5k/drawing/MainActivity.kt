@@ -5,6 +5,7 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.util.Log
 import android.view.Gravity
 import android.widget.FrameLayout
 import android.widget.GridLayout
@@ -12,8 +13,10 @@ import android.widget.ImageView
 import android.widget.ScrollView
 import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
+import org.odclcslkrpb5k.drawing.adapters.InkLoader
 import org.odclcslkrpb5k.drawing.adapters.PageStore
 import org.odclcslkrpb5k.drawing.adapters.TemplateAssets
+import org.odclcslkrpb5k.drawing.core.Outcome
 import org.odclcslkrpb5k.drawing.core.PageId
 
 /**
@@ -23,6 +26,7 @@ import org.odclcslkrpb5k.drawing.core.PageId
  */
 class MainActivity : Activity() {
     private val store by lazy { PageStore(filesDir) }
+    private val picture by lazy { PagePicture(this) }
     private val grid by lazy { GridLayout(this).apply { columnCount = COLUMNS } }
     private var created = 0
 
@@ -101,6 +105,42 @@ class MainActivity : Activity() {
             val tile = tile(thumb, "drawing")
             tile.setOnClickListener { open(id) }
             grid.addView(tile, tileParams())
+            if (thumb == null) redraw(id, tile)
+        }
+    }
+
+    /**
+     * Draws a page's missing thumbnail from the page itself and keeps it: a page restored from a
+     * backup comes without one (thumbnails are left out of it), as does one whose thumbnail write
+     * failed. The page is read on the disk thread; drawing waits for Ink.
+     */
+    private fun redraw(id: PageId, tile: ImageView) {
+        PageDisk.run(
+            {
+                when (val page = store.load(id)) {
+                    is Outcome.Ok -> page.value to coloringOf(assets, page.value)
+                    is Outcome.Err ->
+                        null.also { Log.w(TAG, "page for a thumbnail: ${page.error}") }
+                }
+            },
+            failed = null,
+        ) { page ->
+            if (page != null && !isDestroyed) {
+                InkLoader.whenLoaded {
+                    val thumb = picture.draw(page.first, page.second)
+                    if (!isDestroyed) tile.setImageBitmap(thumb)
+                    // Kept only while still missing and the page still saved: a drawing screen may
+                    // have written a newer one meanwhile, or the parent trashed the page.
+                    PageDisk.run(
+                        {
+                            val saved = (store.hasVersions(id) as? Outcome.Ok)?.value == true
+                            if (!saved || store.thumbFile(id).exists()) null
+                            else store.saveThumbnail(id, thumb)
+                        },
+                        failed = null,
+                    ) {}
+                }
+            }
         }
     }
 
@@ -176,6 +216,7 @@ class MainActivity : Activity() {
         }
 
     private companion object {
+        const val TAG = "MainActivity"
         const val COLUMNS = 4
         const val PAD = 12
         const val TILE_PAD = 8

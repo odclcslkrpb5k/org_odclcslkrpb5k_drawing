@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Auto Backup carries the drawings and nothing else (plan, Stretch 2): Google's 25 MB per-app quota
+# is all or nothing, so thumbnails, the trash or (later) photos in it would one day stop every
+# backup without a word. Both cloud backup and device transfer must include exactly drawings/, and
+# the manifest must name these rules.
+set -euo pipefail
+export LC_ALL=C
+cd "$(dirname "$0")/../.."
+rules=app/src/main/res/xml/data_extraction_rules.xml
+status=0
+# Comments removed, one element per line.
+body=$(perl -0pe 's/<!--.*?-->//gs; s/>\s*</>\n</g' "$rules")
+for section in cloud-backup device-transfer; do
+  got=$(awk -v s="$section" '$0 ~ "<"s"[ >]" { on = 1; next } $0 ~ "</"s">" { on = 0 } on' <<<"$body" |
+    sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//')
+  want='<include domain="file" path="drawings/" />'
+  [ "$got" = "$want" ] || { echo "backup-rules: $section must hold only $want; it holds:"; echo "$got"; status=1; }
+done
+grep -q 'android:dataExtractionRules="@xml/data_extraction_rules"' app/src/main/AndroidManifest.xml ||
+  { echo "backup-rules: the manifest does not name the rules"; status=1; }
+grep -q 'android:allowBackup="false"' app/src/main/AndroidManifest.xml &&
+  { echo "backup-rules: the manifest turns backup off"; status=1; }
+[ "$status" -eq 0 ] && echo "backup-rules: Auto Backup carries drawings/ only"
+exit "$status"
