@@ -1,0 +1,1 @@
+printf 'D4:BF\n' > tools/release/certificate.sha256

@@ -7,7 +7,7 @@
 #
 # A change to a control, its configuration, the build or the code the plants edit replays every
 # control's planted bug (TS-5).
-^(tools/checks/|test-fixtures/|config/|docker/Dockerfile$|compose\.yaml$|build\.gradle\.kts$|settings\.gradle\.kts$|gradle\.properties$|gradle/|[a-z-]*gradle\.lockfile$|(app|core)/|tools/templates/|templates/|tools/vendor-manifest\.tsv$)	plants	docker compose run --build --rm plants
+^(tools/checks/|tools/release/|test-fixtures/|config/|docker/Dockerfile$|compose\.yaml$|build\.gradle\.kts$|settings\.gradle\.kts$|gradle\.properties$|gradle/|[a-z-]*gradle\.lockfile$|(app|core)/|tools/templates/|templates/|tools/vendor-manifest\.tsv$)	plants	docker compose run --build --rm plants
 # A change to the ship tool runs its own tests.
 ^(tools/ship/|\.githooks/|test/ship/|test/support/|docker/ship\.Dockerfile$|compose\.yaml$)	ship-tests	docker compose run --build --rm ship-tests
 # A change to the app or its model runs every emulator scenario.

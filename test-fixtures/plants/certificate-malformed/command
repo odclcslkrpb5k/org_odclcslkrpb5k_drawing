@@ -1,0 +1,1 @@
+./gradlew --offline --console=plain -q :app:assembleRelease && tools/checks/release-cert

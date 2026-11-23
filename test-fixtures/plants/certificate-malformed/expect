@@ -1,0 +1,1 @@
+release-cert: verify-cert refused for another reason: verify-cert: tools/release/certificate.sha256 is not one lowercase SHA-256

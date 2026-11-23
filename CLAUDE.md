@@ -34,6 +34,8 @@ Deviations, each with its reason:
 - The Gradle tasks the check runs are named once, in the root `checkAll` task.
 - Never run `tools/checks/warm` outside the image build; it deletes sources (it refuses to).
 - `tools/release/make-key` is for the person to run, never the agent (DP-2).
+- `tools/release/sign` (build and sign; asks the key's password) and `tools/release/install` are
+  the person's too. Both keep only an APK whose certificate matches `tools/release/certificate.sha256`.
 
 ## Shipping (chapter 10)
 The ship tool is vendored in `tools/ship/` (manifest `tools/vendor-manifest.tsv`; RP-4). Its

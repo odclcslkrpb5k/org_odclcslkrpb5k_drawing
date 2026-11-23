@@ -17,6 +17,7 @@ tools/checks/backup-rules || status=1
 ./gradlew --offline --no-daemon --console=plain --warning-mode=all \
   checkAll 2>&1 | tee "$log" || status=$?
 [ "$status" -ne 0 ] || tools/checks/apk || status=1
+[ "$status" -ne 0 ] || tools/checks/release-cert || status=1
 
 while IFS= read -r -d '' report; do
   echo "--- lint report: $report ---"

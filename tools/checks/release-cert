@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# The release-key control works without the key: the recorded certificate is well formed, and
+# verify-cert refuses the release APK signed by a throwaway key (as a debug-signed or wrongly
+# signed release would be). Needs the release APK the check's Gradle run builds.
+set -euo pipefail
+export LC_ALL=C
+cd "$(dirname "$0")/../.."
+apk=build/app/outputs/apk/release/app-release-unsigned.apk
+[ -f "$apk" ] || { echo "release-cert: no release APK at $apk"; exit 1; }
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+keytool -genkeypair -keystore "$work/other.jks" -storetype PKCS12 -alias other -keyalg RSA \
+  -keysize 2048 -validity 1 -dname CN=other -storepass throwaway -keypass throwaway 2>/dev/null
+"$tools/zipalign" -f -p 4 "$apk" "$work/aligned.apk"
+"$tools/apksigner" sign --ks "$work/other.jks" --ks-pass pass:throwaway --out "$work/other.apk" "$work/aligned.apk"
+if out=$(tools/release/verify-cert "$work/other.apk" 2>&1); then
+  echo "release-cert: verify-cert accepted an APK signed by another key: $out"; exit 1
+fi
+grep -q 'is not signed by the release key' <<<"$out" || { echo "release-cert: verify-cert refused for another reason: $out"; exit 1; }
+echo "release-cert: the recorded certificate is well formed; another key's APK is refused"

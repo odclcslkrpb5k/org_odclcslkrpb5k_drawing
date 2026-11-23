@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Builds the release APK and signs it with the release key, for a person to run (DP-2: keytool's
+# and apksigner's password prompts never pass through an agent session). The signed APK is kept
+# only if verify-cert accepts it. Usage: tools/release/sign [keystore-directory]
+# (default ~/.config/odclcslkrpb5k-android). Output: build/release/drawing-<versionName>.apk
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+dir=${1:-$HOME/.config/odclcslkrpb5k-android}
+[ -f "$dir/release.jks" ] || { echo "sign: no release key at $dir/release.jks (tools/release/make-key)" >&2; exit 1; }
+docker compose build check
+# The build runs offline from the image's cache, with the working tree mounted for its output.
+docker compose run --rm dev ./gradlew --offline --no-daemon --console=plain -q :app:assembleRelease
+name=$(sed -n 's/^ *versionName = "\(.*\)"$/\1/p' app/build.gradle.kts)
+mkdir -p build/release
+docker run --rm -it --pull never --network none -u "$(id -u):$(id -g)" \
+  -v "$PWD:/repo" -v "$dir:/keys:ro" -w /repo drawing-check:dev sh -c '
+  set -e
+  tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+  "$tools/zipalign" -f -p 4 build/app/outputs/apk/release/app-release-unsigned.apk build/release/aligned.apk
+  "$tools/apksigner" sign --ks /keys/release.jks --ks-key-alias release \
+    --out "build/release/drawing-$0.apk" build/release/aligned.apk
+  rm build/release/aligned.apk
+  tools/release/verify-cert "build/release/drawing-$0.apk" || { rm -f "build/release/drawing-$0.apk"; exit 1; }
+' "$name"
+echo "sign: build/release/drawing-$name.apk"

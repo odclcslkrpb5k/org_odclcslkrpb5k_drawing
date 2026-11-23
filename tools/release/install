@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Installs a signed release APK on the tablet over adb (the host's adb, paired by wireless
+# debugging), only once verify-cert accepts it, and as an update (-r) so her drawings stay.
+# Usage: tools/release/install build/release/drawing-<version>.apk
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+[ $# -eq 1 ] && [ -f "$1" ] || { echo "usage: install <signed apk>" >&2; exit 2; }
+docker run --rm --pull never --network none -u "$(id -u):$(id -g)" -v "$PWD:/repo:ro" -w /repo \
+  drawing-check:dev tools/release/verify-cert "$1"
+command -v adb >/dev/null || { echo "install: no adb on this machine (Android platform-tools)" >&2; exit 1; }
+adb install -r "$1"

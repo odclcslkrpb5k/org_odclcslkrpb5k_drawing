@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Refuses an APK unless it verifies and is signed by the release key alone: its certificate's
+# SHA-256 must equal tools/release/certificate.sha256 (recorded once, from make-key). Android
+# updates an app only when the new APK has the installed one's certificate; one signed by any other
+# key (a debug key, a new key) could reach her tablet only by uninstalling, which deletes her
+# drawings. Runs where apksigner is (the drawing-check image). Usage: verify-cert <apk>
+set -euo pipefail
+export LC_ALL=C
+cd "$(dirname "$0")/../.."
+[ $# -eq 1 ] && [ -f "$1" ] || { echo "usage: verify-cert <apk>" >&2; exit 2; }
+want=$(cat tools/release/certificate.sha256)
+[[ $want =~ ^[0-9a-f]{64}$ ]] || { echo "verify-cert: tools/release/certificate.sha256 is not one lowercase SHA-256" >&2; exit 1; }
+apksigner=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+out=$("$apksigner" verify --print-certs "$1" 2>&1) || { echo "verify-cert: $1 does not verify:"; echo "$out"; exit 1; }
+got=$(sed -n 's/^Signer #[0-9]* certificate SHA-256 digest: //p' <<<"$out")
+[ "$(wc -l <<<"$got")" -eq 1 ] || { echo "verify-cert: $1 has $(wc -l <<<"$got") signers, not one"; exit 1; }
+[ "$got" = "$want" ] || { echo "verify-cert: $1 is not signed by the release key (certificate $got)"; exit 1; }
+echo "verify-cert: $1 is signed by the release key"
