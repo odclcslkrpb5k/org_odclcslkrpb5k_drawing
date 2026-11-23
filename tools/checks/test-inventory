@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# TS-6: the unit tests that ran are the unit tests the source has. Gradle's exit status says nothing
+# about what it ran (a test class dropped by a build change, or a filter, passes silently), so this
+# compares the test classes declared under */src/test with the JUnit reports the check's Gradle run
+# wrote, in both directions, and requires each class to have run at least one test with none
+# skipped. Run after the Gradle run, in the same tree.
+set -euo pipefail
+export LC_ALL=C
+cd "$(dirname "$0")/../.."
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
+# Declared: "<package>.<Class>" for each `class <Name>Test` in a test source file.
+find . -path ./build -prune -o -path '*/src/test/*' -name '*.kt' -print0 |
+  xargs -0 perl -ne '
+    $pkg = $1 if /^package ([\w.]+)/;
+    print "$pkg.$1\n" if /^class (\w+Test)\b/;
+  ' | sort >"$work/declared"
+[ -s "$work/declared" ] || { echo "test-inventory: no test classes declared; the search is broken"; exit 1; }
+
+# Ran: one JUnit report per class, under each module's build output.
+find build -path '*/test-results/test/TEST-*.xml' -print >"$work/reports"
+[ -s "$work/reports" ] || { echo "test-inventory: no test reports found; did the tests run?"; exit 1; }
+status=0
+total=0
+: >"$work/ran"
+while IFS= read -r report; do
+  head=$(grep -m1 '<testsuite ' "$report" || true)
+  name=$(sed -nE 's/.* name="([^"]+)".*/\1/p' <<<"$head")
+  tests=$(sed -nE 's/.* tests="([0-9]+)".*/\1/p' <<<"$head")
+  skipped=$(sed -nE 's/.* skipped="([0-9]+)".*/\1/p' <<<"$head")
+  [ -n "$name" ] && [ -n "$tests" ] && [ -n "$skipped" ] ||
+    { echo "test-inventory: $report has no readable testsuite line"; status=1; continue; }
+  echo "$name" >>"$work/ran"
+  [ "$tests" -ge 1 ] || { echo "test-inventory: $name ran no tests"; status=1; }
+  [ "$skipped" -eq 0 ] || { echo "test-inventory: $name skipped $skipped tests"; status=1; }
+  total=$((total + tests))
+done <"$work/reports"
+sort -o "$work/ran" "$work/ran"
+
+missing=$(comm -23 "$work/declared" "$work/ran")
+[ -z "$missing" ] || { echo "test-inventory: declared but did not run:"; echo "$missing"; status=1; }
+extra=$(comm -13 "$work/declared" "$work/ran")
+[ -z "$extra" ] || { echo "test-inventory: ran but not declared in the source (stale report?):"; echo "$extra"; status=1; }
+dups=$(uniq -d "$work/ran")
+[ -z "$dups" ] || { echo "test-inventory: reported twice:"; echo "$dups"; status=1; }
+[ "$status" -eq 0 ] &&
+  echo "test-inventory: $(wc -l <"$work/declared") test classes declared, all ran: $total tests, none skipped"
+exit "$status"

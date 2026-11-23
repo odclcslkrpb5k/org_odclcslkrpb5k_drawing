@@ -1,0 +1,1 @@
+printf '\ntasks.withType<Test>().configureEach { filter { excludeTestsMatching("*HoldTest") } }\n' >> core/build.gradle.kts

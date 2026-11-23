@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A unicorn's head and neck, facing left: golden horn, pink and purple mane down its back. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <!-- Mane behind the neck: purple under pink, in scallops. -->
+    <path android:fillColor="#FF9575CD" android:strokeColor="#FF5E35B1" android:strokeWidth="2" android:strokeLineJoin="round"
+        android:pathData="M50,20 C64,14 80,20 84,34 C92,38 92,50 86,56 C92,62 90,76 82,80 C86,88 80,96 72,96 L66,96 L64,40 Z" />
+    <path android:fillColor="#FFF06292" android:strokeColor="#FFAD1457" android:strokeWidth="2" android:strokeLineJoin="round"
+        android:pathData="M48,20 C60,12 74,16 76,28 C84,32 84,44 78,48 C84,54 82,66 74,70 C78,78 74,88 66,90 L62,40 Z" />
+    <!-- Head and neck. -->
+    <path android:fillColor="#FFFFFFFF" android:strokeColor="#FF5E35B1" android:strokeWidth="3" android:strokeLineJoin="round"
+        android:pathData="M32,96 C32,84 34,74 36,68 C28,70 18,70 12,66 C4,62 4,50 12,46 C20,40 26,32 34,26 C44,20 58,22 64,34 C70,48 68,72 70,96 Z" />
+    <!-- Ear. -->
+    <path android:fillColor="#FFFFFFFF" android:strokeColor="#FF5E35B1" android:strokeWidth="3" android:strokeLineJoin="round"
+        android:pathData="M48,24 L56,8 L60,28 Z" />
+    <path android:fillColor="#FFF8BBD0" android:pathData="M51,23 L55,14 L57,25 Z" />
+    <!-- Horn, leaning forward, with two stripes. -->
+    <path android:fillColor="#FFFFD54F" android:strokeColor="#FF8D6E00" android:strokeWidth="2" android:strokeLineJoin="round"
+        android:pathData="M34,26 L44,22 L28,2 Z" />
+    <path android:fillColor="#00000000" android:strokeColor="#FF8D6E00" android:strokeWidth="1.5"
+        android:pathData="M33,17 L38,15 M30,10 L34,9" />
+    <!-- Closed happy eye with lashes, cheek, nostril. -->
+    <path android:fillColor="#00000000" android:strokeColor="#FF3E2723" android:strokeWidth="3" android:strokeLineCap="round"
+        android:pathData="M34,42 Q40,48 46,42 M36,45 L34,49 M40,46 L40,50 M44,45 L46,49" />
+    <path android:fillColor="#FFF8BBD0" android:pathData="M22,56 a6,4 0 1,1 12,0 a6,4 0 1,1 -12,0 Z" />
+    <path android:fillColor="#FF5E35B1" android:pathData="M9,54 a2.5,2.5 0 1,1 5,0 a2.5,2.5 0 1,1 -5,0 Z" />
+</vector>

@@ -2,8 +2,8 @@ package org.odclcslkrpb5k.drawing.core
 
 import io.kotest.property.Arb
 import io.kotest.property.arbitrary.bind
+import io.kotest.property.arbitrary.boolean
 import io.kotest.property.arbitrary.element
-import io.kotest.property.arbitrary.enum
 import io.kotest.property.arbitrary.filter
 import io.kotest.property.arbitrary.flatMap
 import io.kotest.property.arbitrary.float
@@ -46,9 +46,12 @@ fun arbStroke(kinds: List<BrushKind> = BrushKind.entries): Arb<StrokeData> =
         StrokeData(BrushSpec(k, Argb(c), s), pts)
     }
 
-fun arbStamp(): Arb<StampData> =
+/** The stamps a page of format 4 or older could hold: the faces. */
+val FACES: List<Stamp> = Stamp.entries.filter { it.isFace }
+
+fun arbStamp(stamps: List<Stamp> = Stamp.entries): Arb<StampData> =
     Arb.bind(
-        Arb.enum<Stamp>(),
+        Arb.element(stamps),
         finite(0f, Page.WIDTH),
         finite(0f, Page.HEIGHT),
         finite(StampData.MIN_SIZE, StampData.MAX_SIZE),
@@ -78,6 +81,16 @@ fun arbHistory(): Arb<History> =
             History(it, template = template)
         }
     }
+
+/** A blank page of strokes without the eraser and faces only, as version 2 could hold. */
+fun arbVersion2(): Arb<History> =
+    Arb.list(
+            Arb.bind(arbStroke(OLDER_BRUSHES), arbStamp(FACES), Arb.boolean()) { s, f, stamp ->
+                if (stamp) Op.AddStamp(f) else Op.AddStroke(s)
+            },
+            0..MAX_STROKES,
+        )
+        .map { History(it) }
 
 /** A page of strokes only, as version 1 could hold. */
 fun arbStrokesOnly(): Arb<History> =

@@ -114,13 +114,9 @@ class PageCodecTest :
         }
 
         "a page saved by version 2, strokes and stamps, still opens" {
-            checkAll(arbHistory()) { page ->
-                if (
-                    page.template == null && page.strokes.none { it.brush.kind == BrushKind.ERASER }
-                ) {
-                    PageCodec.decode(asOlderVersion(PageCodec.encode(page), 2)) shouldBe
-                        Outcome.Ok(page)
-                }
+            checkAll(arbVersion2()) { page ->
+                PageCodec.decode(asOlderVersion(PageCodec.encode(page), 2)) shouldBe
+                    Outcome.Ok(page)
             }
         }
 
@@ -137,6 +133,14 @@ class PageCodecTest :
                     "LOVE" to 5,
                     "SLEEPY" to 6,
                     "SCARED" to 7,
+                    "UNICORN" to 8,
+                    "CROWN" to 9,
+                    "RAINBOW" to 10,
+                    "STAR" to 11,
+                    "FLOWER" to 12,
+                    "HEART" to 13,
+                    "MICROPHONE" to 14,
+                    "BUTTERFLY" to 15,
                 )
         }
 
@@ -146,6 +150,23 @@ class PageCodecTest :
             val bytes = PageCodec.encode(History(listOf(Op.AddStroke(eraser))))
             bytes[4] = 3
             PageCodec.decode(bytes) shouldBe Outcome.Err(DecodeError.OUT_OF_RANGE)
+        }
+
+        "a clip-art stamp in a version 4 page is refused, since version 4 had none" {
+            checkAll(arbStamp(Stamp.entries - FACES)) { stamp ->
+                val bytes = PageCodec.encode(History(listOf(Op.AddStamp(stamp))))
+                bytes[4] = 4
+                PageCodec.decode(bytes) shouldBe Outcome.Err(DecodeError.OUT_OF_RANGE)
+            }
+        }
+
+        "a version 4 page of faces still opens" {
+            checkAll(arbStamp(FACES)) { stamp ->
+                val page = History(listOf(Op.AddStamp(stamp)))
+                val bytes = PageCodec.encode(page)
+                bytes[4] = 4
+                PageCodec.decode(bytes) shouldBe Outcome.Ok(page)
+            }
         }
 
         "a fill on a page with no coloring page is refused" {

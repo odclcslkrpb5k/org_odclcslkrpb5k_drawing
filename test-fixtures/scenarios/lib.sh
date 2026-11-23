@@ -113,6 +113,8 @@ UNDO_BUTTON="84 930"
 REDO_BUTTON="84 1098"
 HAPPY_FACE="270 348"
 SAD_FACE="438 348"
+# The tray is four across: faces in rows one and two, clip art from row three (unicorn first).
+UNICORN_STAMP="270 684"
 
 # A one-finger drag from (x1,y1) to (x2,y2), as one adb shell command.
 drag() { stroke "$@"; }

@@ -12,18 +12,29 @@ import kotlin.math.hypot
 import org.odclcslkrpb5k.drawing.core.Stamp
 import org.odclcslkrpb5k.drawing.core.StampData
 
-/** The drawable for each face, in the order of [Stamp]. */
-val STAMP_DRAWABLES: Map<Stamp, Int> =
-    mapOf(
-        Stamp.HAPPY to R.drawable.stamp_happy,
-        Stamp.SAD to R.drawable.stamp_sad,
-        Stamp.ANGRY to R.drawable.stamp_angry,
-        Stamp.SURPRISED to R.drawable.stamp_surprised,
-        Stamp.SILLY to R.drawable.stamp_silly,
-        Stamp.LOVE to R.drawable.stamp_love,
-        Stamp.SLEEPY to R.drawable.stamp_sleepy,
-        Stamp.SCARED to R.drawable.stamp_scared,
-    )
+/** The drawable for each stamp: a `when`, so a stamp added without one does not compile. */
+fun stampDrawable(stamp: Stamp): Int =
+    when (stamp) {
+        Stamp.HAPPY -> R.drawable.stamp_happy
+        Stamp.SAD -> R.drawable.stamp_sad
+        Stamp.ANGRY -> R.drawable.stamp_angry
+        Stamp.SURPRISED -> R.drawable.stamp_surprised
+        Stamp.SILLY -> R.drawable.stamp_silly
+        Stamp.LOVE -> R.drawable.stamp_love
+        Stamp.SLEEPY -> R.drawable.stamp_sleepy
+        Stamp.SCARED -> R.drawable.stamp_scared
+        Stamp.UNICORN -> R.drawable.stamp_unicorn
+        Stamp.CROWN -> R.drawable.stamp_crown
+        Stamp.RAINBOW -> R.drawable.stamp_rainbow
+        Stamp.STAR -> R.drawable.stamp_star
+        Stamp.FLOWER -> R.drawable.stamp_flower
+        Stamp.HEART -> R.drawable.stamp_heart
+        Stamp.MICROPHONE -> R.drawable.stamp_microphone
+        Stamp.BUTTERFLY -> R.drawable.stamp_butterfly
+    }
+
+/** Every stamp's drawable, in the order of [Stamp] (the tray's order). */
+val STAMP_DRAWABLES: Map<Stamp, Int> = Stamp.entries.associateWith(::stampDrawable)
 
 /**
  * The stamps, above every stroke. They are drawn from their page position and size, never from

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A golden crown with three points and jewels. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <path android:fillColor="#FFFFCA28" android:strokeColor="#FF8D6E00" android:strokeWidth="3" android:strokeLineJoin="round"
+        android:pathData="M10,78 L6,26 L30,50 L50,16 L70,50 L94,26 L90,78 Z" />
+    <path android:fillColor="#FFFFB300" android:strokeColor="#FF8D6E00" android:strokeWidth="3"
+        android:pathData="M10,78 L90,78 L90,90 L10,90 Z" />
+    <path android:fillColor="#FFE53935" android:pathData="M44,64 a6,6 0 1,1 12,0 a6,6 0 1,1 -12,0 Z" />
+    <path android:fillColor="#FF1E88E5" android:pathData="M20,66 a5,5 0 1,1 10,0 a5,5 0 1,1 -10,0 Z M70,66 a5,5 0 1,1 10,0 a5,5 0 1,1 -10,0 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M2,26 a4,4 0 1,1 8,0 a4,4 0 1,1 -8,0 Z M46,16 a4,4 0 1,1 8,0 a4,4 0 1,1 -8,0 Z M90,26 a4,4 0 1,1 8,0 a4,4 0 1,1 -8,0 Z" />
+</vector>

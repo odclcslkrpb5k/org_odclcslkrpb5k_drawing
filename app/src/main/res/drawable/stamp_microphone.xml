@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A pink singing microphone with a grille and a sparkle. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <path android:fillColor="#FF7A4BE0" android:strokeColor="#FF4527A0" android:strokeWidth="3" android:strokeLineJoin="round"
+        android:pathData="M42,52 L58,52 L54,94 L46,94 Z" />
+    <path android:fillColor="#FFF06292" android:strokeColor="#FF880E4F" android:strokeWidth="3"
+        android:pathData="M28,30 a22,22 0 1,1 44,0 a22,22 0 1,1 -44,0 Z" />
+    <path android:fillColor="#00000000" android:strokeColor="#FF880E4F" android:strokeWidth="2"
+        android:pathData="M36,14 L64,46 M50,8 L72,32 M28,26 L52,52 M64,14 L36,46 M50,8 L28,32 M72,26 L48,52" />
+    <path android:fillColor="#FFFFD54F" android:strokeColor="#FF8D6E00" android:strokeWidth="2" android:pathData="M38,50 L62,50 L60,56 L40,56 Z" />
+    <path android:fillColor="#FFFFFFFF" android:strokeColor="#FF7A4BE0" android:strokeWidth="1.5"
+        android:pathData="M84,52 L87,59 L94,62 L87,65 L84,72 L81,65 L74,62 L81,59 Z" />
+</vector>

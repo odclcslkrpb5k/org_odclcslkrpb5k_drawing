@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A rainbow of six bands between two clouds. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <path android:fillColor="#00000000" android:strokeColor="#FFE53935" android:strokeWidth="7" android:pathData="M10,76 A40,40 0 0,1 90,76" />
+    <path android:fillColor="#00000000" android:strokeColor="#FFFF8F00" android:strokeWidth="7" android:pathData="M17,76 A33,33 0 0,1 83,76" />
+    <path android:fillColor="#00000000" android:strokeColor="#FFFDD835" android:strokeWidth="7" android:pathData="M24,76 A26,26 0 0,1 76,76" />
+    <path android:fillColor="#00000000" android:strokeColor="#FF43A047" android:strokeWidth="7" android:pathData="M31,76 A19,19 0 0,1 69,76" />
+    <path android:fillColor="#00000000" android:strokeColor="#FF1E88E5" android:strokeWidth="7" android:pathData="M38,76 A12,12 0 0,1 62,76" />
+    <path android:fillColor="#00000000" android:strokeColor="#FF7A4BE0" android:strokeWidth="7" android:pathData="M45,76 A5,5 0 0,1 55,76" />
+    <path android:fillColor="#FFFFFFFF" android:strokeColor="#FF90A4AE" android:strokeWidth="2"
+        android:pathData="M2,84 C2,74 12,70 18,74 C22,66 34,68 34,78 C40,78 40,88 34,88 L6,88 C2,88 2,86 2,84 Z M66,78 C66,68 78,66 82,74 C88,70 98,74 98,84 C98,86 98,88 94,88 L66,88 C60,88 60,78 66,78 Z" />
+</vector>

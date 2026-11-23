@@ -8,10 +8,10 @@ import android.widget.ImageView
 import org.odclcslkrpb5k.drawing.core.Stamp
 
 /**
- * The stamps button and its tray of faces. The button opens and closes the tray; a face chosen in
- * the tray is handed to [arm] and the tray closes; while a face is chosen, the button shows it,
- * filled and ringed, and tapping the button puts the face back. Any other tool closes the tray;
- * [onOpen] closes any other tray first.
+ * The stamps button and its tray of faces and clip art. The button opens and closes the tray; a
+ * stamp chosen in the tray is handed to [arm] and the tray closes; while a stamp is chosen, the
+ * button shows it, filled and ringed, and tapping the button puts the stamp back. Any other tool
+ * closes the tray; [onOpen] closes any other tray first.
  */
 class StampTray(
     private val context: Context,
@@ -20,9 +20,12 @@ class StampTray(
 ) {
     private var armed: Stamp? = null
 
-    /** The faces, two by four; touches in its gaps never fall through to the page. */
+    /**
+     * Four across: the faces in the first two rows, clip art in the next two; touches in its gaps
+     * never fall through to the page.
+     */
     val tray: View by lazy {
-        context.trayPanel(columns = 2).apply {
+        context.trayPanel(columns = COLUMNS).apply {
             for ((face, icon) in STAMP_DRAWABLES) {
                 val button =
                     ImageButton(context).apply {
@@ -78,5 +81,6 @@ class StampTray(
     private companion object {
         const val PAD = 12
         const val FACE = 112
+        const val COLUMNS = 4
     }
 }

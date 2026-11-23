@@ -1,0 +1,1 @@
+./gradlew --offline --console=plain -q :core:test :templates:test && tools/checks/test-inventory

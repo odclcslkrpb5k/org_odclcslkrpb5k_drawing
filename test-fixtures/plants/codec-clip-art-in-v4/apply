@@ -1,0 +1,1 @@
+sed -i 's/it.isFace || version >= CLIP_ART_SINCE/version >= 0/' core/src/main/kotlin/org/odclcslkrpb5k/drawing/core/PageCodec.kt

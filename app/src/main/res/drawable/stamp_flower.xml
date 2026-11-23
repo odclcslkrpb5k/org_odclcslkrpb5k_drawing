@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A pink flower with a yellow middle on a green stem. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <path android:fillColor="#00000000" android:strokeColor="#FF43A047" android:strokeWidth="6" android:strokeLineCap="round" android:pathData="M50,60 L50,96" />
+    <path android:fillColor="#FF66BB6A" android:pathData="M50,82 C38,70 24,72 20,78 C30,86 42,86 50,82 Z" />
+    <path android:fillColor="#FFF48FB1" android:strokeColor="#FFC2185B" android:strokeWidth="2"
+        android:pathData="M50,8 a14,14 0 1,1 -0.1,0 Z M69,22 a14,14 0 1,1 -0.1,0 Z M62,44 a14,14 0 1,1 -0.1,0 Z M38,44 a14,14 0 1,1 -0.1,0 Z M31,22 a14,14 0 1,1 -0.1,0 Z" />
+    <path android:fillColor="#FFFFCA28" android:strokeColor="#FFF57F17" android:strokeWidth="2" android:pathData="M38,42 a12,12 0 1,1 24,0 a12,12 0 1,1 -24,0 Z" />
+</vector>

@@ -39,6 +39,17 @@ sleep 1
 capture stamp-slid
 inked 600 750 || { echo "scenario: a face placed and slid in one touch did not follow"; failed=1; }
 inked 600 350 && { echo "scenario: a face placed and slid in one touch stayed where it landed"; failed=1; }
+# Clip art: the tray's third row starts with the unicorn; it is placed like a face.
+tap $STAMPS_BUTTON
+sleep 1
+capture stamp-tray
+tap $UNICORN_STAMP
+sleep 1
+tap 1500 300
+sleep 1
+capture stamp-unicorn
+# The pink mane: a color no face, pen dot or stroke of the default purple has.
+colored 1548 300 240 98 146 || { echo "scenario: no unicorn where it was placed"; failed=1; }
 adb shell "input tap $HOME_BUTTON"
 home_open
 capture stamp-home
@@ -48,6 +59,7 @@ tap $SAVED_TILE
 page_open
 capture stamp-reopened
 inked 1300 850 || { echo "scenario: the stamp did not survive leaving and reopening"; failed=1; }
+colored 1548 300 240 98 146 || { echo "scenario: the unicorn did not survive leaving and reopening"; failed=1; }
 no_errors
 [ "$failed" -eq 0 ] || exit 1
-echo "scenario stamps: placed, moved, undone as one step, redone, kept"
+echo "scenario stamps: placed, moved, undone as one step, redone, kept; clip art too"

@@ -83,6 +83,11 @@ complexity:
   TooManyFunctions:
     active: true
     ignoreOverridden: true
+  # An exhaustive `when` that maps each enum entry to a value (stampDrawable) is a table, not
+  # branching logic; its exhaustiveness is the compiler's check that no entry is missed.
+  CyclomaticComplexMethod:
+    active: true
+    ignoreSimpleWhenEntries: true
 
 exceptions:
   # ER-5: the disk thread's one counted catch-all lives in PageDisk; nowhere else catches broadly.

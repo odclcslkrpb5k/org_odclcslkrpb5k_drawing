@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A shining yellow star with a small sparkle. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <path android:fillColor="#FFFDD835" android:strokeColor="#FFF57F17" android:strokeWidth="3" android:strokeLineJoin="round"
+        android:pathData="M50,6 L62,36 L94,38 L69,58 L78,90 L50,72 L22,90 L31,58 L6,38 L38,36 Z" />
+    <path android:fillColor="#FFFFF59D" android:pathData="M50,20 L56,38 L70,40 L58,48 Z" />
+    <path android:fillColor="#FFFFFFFF" android:strokeColor="#FFF57F17" android:strokeWidth="1.5"
+        android:pathData="M86,6 L89,13 L96,16 L89,19 L86,26 L83,19 L76,16 L83,13 Z" />
+</vector>

@@ -1,6 +1,9 @@
 package org.odclcslkrpb5k.drawing.core
 
-/** The emotion faces a child can stamp; their order is their saved number, so only append. */
+/**
+ * What a child can stamp: the emotion faces, then clip art (from format 5). Their order is their
+ * saved number, so only append.
+ */
 enum class Stamp {
     HAPPY,
     SAD,
@@ -10,6 +13,18 @@ enum class Stamp {
     LOVE,
     SLEEPY,
     SCARED,
+    UNICORN,
+    CROWN,
+    RAINBOW,
+    STAR,
+    FLOWER,
+    HEART,
+    MICROPHONE,
+    BUTTERFLY;
+
+    /** Whether it is one of the emotion faces, the stamps every format since 2 can hold. */
+    val isFace: Boolean
+        get() = ordinal <= SCARED.ordinal
 }
 
 /** A placed stamp: which face, its center and its width, in page units. */
