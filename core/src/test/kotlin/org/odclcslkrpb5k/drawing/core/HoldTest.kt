@@ -115,7 +115,9 @@ class HoldTest :
         }
 
         "a finger moved past the slop spoils the touch until every finger lifts" {
-            checkAll(Arb.float(20.5f, 500f), Arb.long(3_000, 100_000)) { dx, wait ->
+            checkAll(Arb.float(20.5f, 500f, includeNaNs = true), Arb.long(3_000, 100_000)) {
+                dx,
+                wait ->
                 val spoiled =
                     listOf(Ev.Down(0, 0f, 0f), Ev.Down(1, 50f, 0f), Ev.Move(1, 50f + dx, 0f))
                 play(spoiled + Ev.Wait(wait)).second shouldBe 0

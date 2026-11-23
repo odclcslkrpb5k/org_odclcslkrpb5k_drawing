@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Kotest's Arb.float and Arb.double generate NaN (and infinities) unless told not to, and twice a
+# property failed on NaN that the test never meant to send (2026-11-22, 2026-11-23). Every call in
+# the tests must say which it wants with includeNaNs.
+set -euo pipefail
+export LC_ALL=C
+cd "$(dirname "$0")/../.."
+found=$(find . -path ./build -prune -o -path '*/src/test/*' -name '*.kt' -print0 |
+  xargs -0 -r perl -0ne '
+    while (/Arb\.(float|double)\(([^()]*(?:\([^()]*\)[^()]*)*)\)/g) {
+      my ($kind, $args) = ($1, $2);
+      next if $args =~ /\bincludeNaNs\s*=/;
+      my $line = 1 + (substr($_, 0, pos($_)) =~ tr/\n//);
+      print "$ARGV:$line: Arb.$kind without a NaN choice\n";
+    }')
+[ -z "$found" ] || { echo "arb-nan: state includeNaNs:"; echo "$found"; exit 1; }
+echo "arb-nan: every float and double generator states whether it includes NaN"

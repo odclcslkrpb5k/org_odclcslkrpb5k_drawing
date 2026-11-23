@@ -19,7 +19,7 @@ private const val MAX_REGION = 200
 
 /** A finite float in [min, max]; Kotest's float edge cases include NaN and infinities. */
 private fun finite(min: Float, max: Float): Arb<Float> =
-    Arb.float(min, max).filter { it.isFinite() }
+    Arb.float(min, max, includeNaNs = false).filter { it.isFinite() }
 
 fun arbPoints(): Arb<List<InputPoint>> =
     Arb.list(
