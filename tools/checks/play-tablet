@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Inside the image (started by tools/play): the emulated tablet in a window, with the app built,
+# installed and opened; it returns when the window is closed. The tablet's state lives in
+# $ANDROID_AVD_HOME, which tools/play keeps on the host between sessions.
+# Usage: play-tablet <package> <activity>
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+[ $# -eq 2 ] || { echo "usage: play-tablet <package> <activity>" >&2; exit 2; }
+pkg=$1 activity=$2
+export PATH=$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$PATH
+
+echo "play: building the app (offline)"
+./gradlew --offline --no-daemon --console=plain -q :app:assembleDebug
+
+. tools/checks/tablet-avd
+log=$(mktemp)
+emulator -avd "$avd" -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -accel on \
+  >"$log" 2>&1 &
+emu=$!
+trap 'adb emu kill >/dev/null 2>&1 || kill $emu 2>/dev/null || true' EXIT
+
+echo "play: starting the tablet (a minute or two from cold)"
+for _ in $(seq 1 150); do
+  kill -0 "$emu" 2>/dev/null || { echo "play: the emulator stopped while starting:"; tail -30 "$log"; exit 1; }
+  [ "$(timeout 5 adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ] && break
+  sleep 2
+done
+[ "$(timeout 5 adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ] ||
+  { echo "play: the tablet did not start within 300 s"; tail -30 "$log"; exit 1; }
+# The one-time "Viewing full screen" notice, which a parent dismisses once on the real tablet.
+adb shell settings put secure immersive_mode_confirmations confirmed
+
+echo "play: installing the app (an update: what it saved before stays)"
+if ! out=$(timeout 120 adb install -r build/app/outputs/apk/debug/app-debug.apk 2>&1); then
+  echo "play: the app could not be installed: $out"
+  grep -q UPDATE_INCOMPATIBLE <<<"$out" &&
+    echo "play: the app on the tablet was signed by another debug key; start with tools/play --clean"
+  exit 1
+fi
+adb shell am start -n "$pkg/$activity" >/dev/null
+echo "play: ready. Close the emulator window to stop; the tablet keeps its state for next time."
+wait "$emu" || true

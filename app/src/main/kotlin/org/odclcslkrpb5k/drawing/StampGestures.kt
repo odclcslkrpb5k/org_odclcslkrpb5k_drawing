@@ -81,8 +81,11 @@ class StampGestures(
     private fun placeAt(face: Stamp, x: Float, y: Float): Boolean {
         armed = null
         val placed = StampData(face, x, y, StampData.DEFAULT_SIZE)
+        // Selected before it is placed: the thumbnail taken for the change draws the selected
+        // stamp on top, since it is not with the strokes until it is let go.
+        view.stampSelected = true
         val kept = placed.isSaveable() && place(placed)
-        view.stampSelected = kept
+        if (!kept) view.stampSelected = false
         if (kept) hold(placed, x, y)
         return true
     }

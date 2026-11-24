@@ -45,13 +45,28 @@ data class History(
     val strokes: List<StrokeData>
         get() = done.filterIsInstance<Op.AddStroke>().map { it.stroke }
 
-    /** The stamps on the page, oldest first; they are drawn above every stroke. */
+    /**
+     * The stamps on the page, oldest first; drawn in turn with the strokes, so later ones cover
+     * them.
+     */
     val stamps: List<StampData>
         get() = done.filterIsInstance<Op.AddStamp>().map { it.stamp }
 
     /** Each filled region's color; a region filled again shows its newest color. */
     val fills: Map<Int, Argb>
         get() = done.filterIsInstance<Op.Fill>().associate { it.region to it.color }
+
+    /**
+     * Whether [region] shows [color] whole: its newest fill is that color and no eraser stroke has
+     * been drawn since (an eraser may have cut into it, so filling it again is a change).
+     */
+    fun showsFill(region: Int, color: Argb): Boolean {
+        val last = done.lastOrNull {
+            (it is Op.Fill && it.region == region) ||
+                (it is Op.AddStroke && it.stroke.brush.kind == BrushKind.ERASER)
+        }
+        return last is Op.Fill && last.color == color
+    }
 
     /** The page as saved: everything done, nothing that could be redone. */
     fun saved(): History = copy(undone = emptyList())

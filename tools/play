@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Plays the app on an emulated tablet shaped like hers (1920x1200 landscape, Android 16), in a
+# window on this desktop: the mouse is her finger. The tablet keeps its state between sessions in
+# $PLAY_STATE (default ~/.local/share/odclcslkrpb5k-android/tablet, shared by both apps, so both
+# can be installed on it), with the debug signing key the builds use, so each session's build
+# updates the app already there; --clean wipes it first, for a tablet fresh from the box.
+#
+# The window needs this X display: the container gets a copy of its cookie, good for this display
+# only (nothing on the host is changed), and the display's socket. Software rendering: fine for
+# trying things, not for judging smoothness (the tablet's own checks are in claude-notes/device.md).
+# Usage: tools/play [--clean]
+set -euo pipefail
+cd "$(dirname "$0")/.."
+clean=no
+case "${1:-}" in
+  --clean) clean=yes ;;
+  "") ;;
+  *) echo "usage: tools/play [--clean]" >&2; exit 2 ;;
+esac
+[ -n "${DISPLAY:-}" ] || { echo "play: no X display (DISPLAY is not set)" >&2; exit 1; }
+[ -e /dev/kvm ] || { echo "play: no /dev/kvm; the emulator needs hardware virtualisation" >&2; exit 1; }
+command -v xauth >/dev/null || { echo "play: xauth is needed to let the window onto this display" >&2; exit 1; }
+
+state=${PLAY_STATE:-$HOME/.local/share/odclcslkrpb5k-android/tablet}
+if [ "$clean" = yes ] && [ -d "$state" ]; then
+  # Only a folder holding the emulated tablet (or nothing) is wiped.
+  case "$(ls -A "$state")" in
+    ""|tablet.avd|tablet.ini|android-user|"android-user"$'\n'"tablet.avd"$'\n'"tablet.ini"|"tablet.avd"$'\n'"tablet.ini")
+      rm -r -- "$state" ;;
+    *) echo "play: $state holds more than the tablet; not wiping it" >&2; exit 1 ;;
+  esac
+  echo "play: the tablet's state was wiped"
+fi
+mkdir -p "$state"
+
+cookie=$(mktemp)
+trap 'rm -f "$cookie"' EXIT
+# The display's cookie, usable from any host name (the container's differs from this one's).
+xauth nlist "$DISPLAY" | sed -e 's/^..../ffff/' | xauth -f "$cookie" nmerge -
+
+pkg=$(sed -n 's/^ *applicationId = "\(.*\)"$/\1/p' app/build.gradle.kts)
+image=$(sed -n 's/^ *image: \(.*-check:dev\)$/\1/p' compose.yaml | head -1)
+docker compose build check
+docker run --rm --init --pull never --network none \
+  --device /dev/kvm --group-add "$(stat -c %g /dev/kvm)" -u "$(id -u):$(id -g)" \
+  -e DISPLAY="$DISPLAY" -e XAUTHORITY=/tmp/x-cookie -v "$cookie:/tmp/x-cookie:ro" \
+  -v /tmp/.X11-unix:/tmp/.X11-unix:ro -v "$state:/tablet" -e ANDROID_AVD_HOME=/tablet \
+  -e ANDROID_USER_HOME=/tablet/android-user \
+  "$image" tools/checks/play-tablet "$pkg" .MainActivity

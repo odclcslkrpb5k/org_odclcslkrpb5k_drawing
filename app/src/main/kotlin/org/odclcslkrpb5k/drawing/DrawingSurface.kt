@@ -10,6 +10,7 @@ import android.widget.FrameLayout
 import androidx.ink.authoring.InProgressStrokesView
 import org.odclcslkrpb5k.drawing.adapters.Coloring
 import org.odclcslkrpb5k.drawing.core.Argb
+import org.odclcslkrpb5k.drawing.core.BrushKind
 import org.odclcslkrpb5k.drawing.core.BrushSpec
 import org.odclcslkrpb5k.drawing.core.History
 import org.odclcslkrpb5k.drawing.core.Op
@@ -19,9 +20,11 @@ import org.odclcslkrpb5k.drawing.core.StrokeData
 import org.odclcslkrpb5k.drawing.core.isSaveable
 
 /**
- * The page, bottom to top: a coloring page's fills, the finished strokes, its line art (so the
- * lines stay crisp over scribbles), the stamps, then the stroke in progress on Ink's front buffer.
- * It owns the page's history; every change goes through [onChange].
+ * The page, bottom to top: a photo and a coloring page's fills, the strokes and stamps in the order
+ * she made them (later ones over earlier ones; the eraser rubs out both, and fills made before it),
+ * the coloring page's line art (so the lines stay crisp over scribbles), a stamp still selected,
+ * then the stroke in progress on Ink's front buffer. It owns the page's history; every change goes
+ * through [onChange].
  */
 class DrawingSurface(context: Context) : FrameLayout(context) {
     private val finished = FinishedStrokesView(context)
@@ -41,12 +44,15 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
         )
     private val fillGestures =
         FillGestures(viewToPage) { region ->
-            // Filling a region with the color it has is no change: nothing to undo.
-            if (history.fills[region] != color && !add(Op.Fill(region, color))) {
+            // Filling a region that already shows the color whole is no change: nothing to undo.
+            if (!history.showsFill(region, color) && !add(Op.Fill(region, color))) {
                 Log.w(TAG, "fill not kept")
             }
         }
     private var history = History()
+
+    /** The newest stamp is selected and not yet drawn with the strokes. */
+    private var stampPending = false
 
     /** On a coloring page, a tap fills the region under the finger instead of drawing. */
     var filling: Boolean
@@ -78,6 +84,18 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
     init {
         setBackgroundColor(Color.WHITE)
         stampsView.pageToView = finished.pageToView
+        // A stamp let go joins the strokes in turn: later strokes go over it, the eraser takes it.
+        stampsView.onReleased = {
+            val newest = history.done.lastOrNull()
+            when {
+                !stampPending -> Unit
+                newest is Op.AddStamp -> finished.addStamp(newest.stamp)
+                // Every change lets the stamp go first, so it is the newest; if not, it is drawn
+                // at the next full redraw, and this says so.
+                else -> Log.w(TAG, "a released stamp is not the newest change")
+            }
+            stampPending = false
+        }
         fills.pageToView = finished.pageToView
         lines.pageToView = finished.pageToView
         addView(fills)
@@ -97,8 +115,9 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
         fillGestures.regions = coloring?.regions
         fills.coloring = coloring
         lines.lines = coloring?.lines
-        fills.show(page.fills)
-        finished.show(page.strokes)
+        stampPending = false
+        fills.show(page.done)
+        finished.show(page.done)
         stampsView.stamps = page.stamps
     }
 
@@ -117,10 +136,20 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
      * [block] runs once Ink holds no unfinished stroke, so a stroke lifted as the child leaves is
      * handed back and kept, and Ink's renderer is idle before the screen is torn down (tearing it
      * down mid-frame aborted the app). After [LEAVE_FRAMES] frames it runs anyway, and says so.
+     * Then Ink's layer is hidden and [block] waits one more frame, so no frame of that layer is
+     * still being drawn when the screen goes: a rare crash in the system's render thread while
+     * leaving under load (emulator, 2026-11-24) is the reason; it could not be made to happen on
+     * demand, so this is a precaution, checked on the tablet (device.md).
      */
     fun leaving(block: () -> Unit) {
         strokes.cancel()
-        settled(block, 0)
+        settled(
+            {
+                ink.visibility = INVISIBLE
+                postOnAnimation { block() }
+            },
+            0,
+        )
     }
 
     /**
@@ -147,6 +176,8 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
         if (data.isSaveable() && !history.isFull) {
             history = history.apply(Op.AddStroke(data))
             finished.add(data)
+            // An eraser rubs out fills as well as strokes and stamps (never a photo or a line).
+            if (data.brush.kind == BrushKind.ERASER) fills.erase(data)
             onChange(history)
         } else {
             Log.w(TAG, "stroke not kept: not saveable or page full")
@@ -161,6 +192,8 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
         }
         // Painted before the change is reported: the thumbnail taken for it must show the fill.
         if (op is Op.Fill) fills.fill(op.region, op.color)
+        // A stamp just placed is selected: drawn on top until let go, then with the strokes.
+        if (op is Op.AddStamp) stampPending = true
         change(history.apply(op))
         return true
     }
@@ -178,8 +211,9 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
         stampGestures.release()
         if (next == history) return
         history = next
-        fills.show(next.fills)
-        finished.show(next.strokes)
+        stampPending = false
+        fills.show(next.done)
+        finished.show(next.done)
         stampsView.stamps = next.stamps
         onChange(next)
     }
@@ -237,8 +271,8 @@ class DrawingSurface(context: Context) : FrameLayout(context) {
 
 /**
  * The color a stroke is drawn in. The highlighter is see-through, whatever the swatch. The eraser
- * shows a faint grey trail while the finger is down (solid white would seem to wipe fills, lines
- * and stamps it leaves alone); finished, it is a cut-out and its color is never drawn.
+ * shows a faint grey trail while the finger is down (solid white would seem to wipe the photo and
+ * the lines, which it leaves alone); finished, it is a cut-out and its color is never drawn.
  */
 private fun inkFor(tool: Tool, color: Argb): Argb =
     when (tool) {

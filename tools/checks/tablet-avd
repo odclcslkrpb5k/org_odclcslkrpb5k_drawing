@@ -1,0 +1,18 @@
+# The emulated tablet, shaped like hers (Galaxy Tab A11+: 1920x1200 landscape, density 240,
+# Android 16), created once in $ANDROID_AVD_HOME (default ~/.android/avd; tools/play points it at
+# the state it keeps). Its settings are applied on every start, so a kept tablet takes a changed
+# setting too. Sourced by tools/checks/emulator (the headless scenarios) and
+# tools/checks/play-tablet (a window to play in), so the two never differ.
+avd=tablet
+avd_home=${ANDROID_AVD_HOME:-$HOME/.android/avd}
+if [ ! -d "$avd_home/$avd.avd" ]; then
+  echo no | avdmanager --silent create avd -n "$avd" -k "system-images;android-36;google_apis;x86_64" >/dev/null
+  [ -d "$avd_home/$avd.avd" ] || { echo "tablet-avd: the tablet was not made in $avd_home" >&2; exit 1; }
+fi
+# Four cores: with two, software rendering on a busy machine left System UI not responding.
+for setting in hw.lcd.width=1920 hw.lcd.height=1200 hw.lcd.density=240 hw.keyboard=yes \
+  hw.ramSize=4096 hw.cpu.ncore=4 hw.initialOrientation=landscape hw.camera.back=emulated \
+  hw.camera.front=emulated disk.dataPartition.size=4G; do
+  sed -i "/^${setting%%=*}=/d" "$avd_home/$avd.avd/config.ini"
+  echo "$setting" >>"$avd_home/$avd.avd/config.ini"
+done

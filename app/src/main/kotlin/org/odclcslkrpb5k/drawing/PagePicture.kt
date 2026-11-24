@@ -29,8 +29,8 @@ class PagePicture(context: Context) {
         fills.photo = photo
         fills.coloring = coloring
         lines.lines = coloring?.lines
-        fills.show(page.fills)
-        finished.show(page.strokes)
+        fills.show(page.done)
+        finished.show(page.done)
         stamps.stamps = page.stamps
         val picture = flatten(fills, finished, lines, stamps, THUMB_SCALE)
         // A photo is a page-sized bitmap: not kept once drawn.

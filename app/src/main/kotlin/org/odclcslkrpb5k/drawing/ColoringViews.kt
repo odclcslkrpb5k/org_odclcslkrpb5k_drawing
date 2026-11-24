@@ -10,7 +10,10 @@ import android.view.View
 import androidx.core.graphics.createBitmap
 import org.odclcslkrpb5k.drawing.adapters.Coloring
 import org.odclcslkrpb5k.drawing.core.Argb
+import org.odclcslkrpb5k.drawing.core.BrushKind
+import org.odclcslkrpb5k.drawing.core.Op
 import org.odclcslkrpb5k.drawing.core.Page
+import org.odclcslkrpb5k.drawing.core.StrokeData
 
 /**
  * The page's bottom: a photo she took (the selfie stretch), then a coloring page's filled regions,
@@ -21,6 +24,7 @@ class FillsView(context: Context) : View(context) {
     private val page = createBitmap(Page.WIDTH.toInt(), Page.HEIGHT.toInt())
     private val pageCanvas = Canvas(page)
     private val paint = Paint()
+    private val marks = Marks()
     private val scaled = Paint(Paint.FILTER_BITMAP_FLAG)
 
     /** Page-to-view transform, shared with the other page layers. */
@@ -42,10 +46,33 @@ class FillsView(context: Context) : View(context) {
         invalidate()
     }
 
-    /** Repaints every fill (open, undo, redo). */
-    fun show(fills: Map<Int, Argb>) {
+    /**
+     * Repaints the fills from the page's operations, in order: a fill paints its region, and an
+     * eraser stroke cuts into the fills made before it (open, undo, redo).
+     */
+    fun show(ops: List<Op>) {
         page.eraseColor(Color.TRANSPARENT)
-        for ((region, color) in fills) paintRegion(region, color)
+        // A page without a coloring page has no fills for an eraser to cut.
+        if (coloring == null) {
+            invalidate()
+            return
+        }
+        for (op in ops) {
+            when (op) {
+                is Op.Fill -> paintRegion(op.region, op.color)
+                is Op.AddStroke ->
+                    if (op.stroke.brush.kind == BrushKind.ERASER)
+                        marks.stroke(pageCanvas, op.stroke)
+                is Op.AddStamp -> Unit
+            }
+        }
+        invalidate()
+    }
+
+    /** An eraser stroke just drawn cuts into the fills. */
+    fun erase(eraser: StrokeData) {
+        if (coloring == null) return
+        marks.stroke(pageCanvas, eraser)
         invalidate()
     }
 

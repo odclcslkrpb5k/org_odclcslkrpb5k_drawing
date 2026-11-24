@@ -50,6 +50,25 @@ sleep 1
 capture stamp-unicorn
 # The pink mane: a color no face, pen dot or stroke of the default purple has.
 colored 1548 300 240 98 146 || { echo "scenario: no unicorn where it was placed"; failed=1; }
+# A stroke after the stamp goes over it, and the eraser rubs it out. The stamp, just placed, is
+# still selected (a finger on it would move it), so a small stroke elsewhere lets it go first.
+read -r ur ug ub <<<"$(pixel 1548 340)"
+[ "$ur" -lt 250 ] || [ "$ug" -lt 250 ] || [ "$ub" -lt 250 ] || { echo "scenario: no unicorn under the eraser's path"; exit 1; }
+adb shell "$(stroke 300 1100 340 1100)"
+sleep 1
+adb shell "$(stroke 1400 300 1680 300)"
+sleep 1
+capture stamp-marked-over
+colored 1548 300 122 75 224 || { echo "scenario: a stroke after the stamp did not go over it"; failed=1; }
+tap $BRUSH_BUTTON
+sleep 1
+tap $ERASER
+sleep 1
+adb shell "$(stroke 1400 340 1680 340)"
+sleep 1
+capture stamp-erased
+colored 1548 340 255 255 255 || { echo "scenario: the eraser did not rub out the stamp"; failed=1; }
+colored 1548 300 122 75 224 || { echo "scenario: the eraser took more than its path"; failed=1; }
 adb shell "input tap $HOME_BUTTON"
 home_open
 capture stamp-home
@@ -59,7 +78,9 @@ tap $SAVED_TILE
 page_open
 capture stamp-reopened
 inked 1300 850 || { echo "scenario: the stamp did not survive leaving and reopening"; failed=1; }
-colored 1548 300 240 98 146 || { echo "scenario: the unicorn did not survive leaving and reopening"; failed=1; }
+colored 1548 300 122 75 224 || { echo "scenario: the stroke over the unicorn did not survive reopening"; failed=1; }
+colored 1548 340 255 255 255 || { echo "scenario: the erased part of the unicorn came back on reopening"; failed=1; }
+colored 1528 250 240 98 146 || { echo "scenario: the rest of the unicorn did not survive reopening"; failed=1; }
 no_errors
 [ "$failed" -eq 0 ] || exit 1
-echo "scenario stamps: placed, moved, undone as one step, redone, kept; clip art too"
+echo "scenario stamps: placed, moved, undone as one step, redone, kept; clip art, marked over and erased"

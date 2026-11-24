@@ -12,21 +12,7 @@ mkdir -p "$out"
 [ -w "$out" ] || { echo "emulator: $out is not writable (create build/emulator before the run)" >&2; exit 2; }
 export PATH=$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$PATH
 
-avd=tablet
-if [ ! -d "$HOME/.android/avd/$avd.avd" ]; then
-  echo no | avdmanager --silent create avd -n "$avd" -k "system-images;android-36;google_apis;x86_64" >/dev/null
-  cat >>"$HOME/.android/avd/$avd.avd/config.ini" <<CFG
-hw.lcd.width=1920
-hw.lcd.height=1200
-hw.lcd.density=240
-hw.keyboard=yes
-hw.ramSize=4096
-hw.initialOrientation=landscape
-hw.camera.back=emulated
-hw.camera.front=emulated
-disk.dataPartition.size=4G
-CFG
-fi
+. tools/checks/tablet-avd
 
 emulator -avd "$avd" -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect \
   -accel on >"$out/emulator.log" 2>&1 &

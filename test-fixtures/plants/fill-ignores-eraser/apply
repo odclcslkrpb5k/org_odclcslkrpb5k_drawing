@@ -1,0 +1,1 @@
+sed -i 's/(it is Op.AddStroke \&\& it.stroke.brush.kind == BrushKind.ERASER)/(it is Op.AddStroke \&\& false)/' core/src/main/kotlin/org/odclcslkrpb5k/drawing/core/History.kt

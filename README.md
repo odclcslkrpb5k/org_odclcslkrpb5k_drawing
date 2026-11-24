@@ -13,6 +13,16 @@ build and its merged manifest. Other services: `plants` (each check's planted bu
 (known vulnerabilities; needs a network), `ship-tests`, and `tools/emulator <scenario>` (a
 headless Android 16 emulator; needs /dev/kvm).
 
+## Play it on this computer
+
+    tools/play            # the tablet as it was left: drawings, stars and both apps kept
+    tools/play --clean    # a tablet fresh from the box
+
+An emulated tablet shaped like hers (1920x1200 landscape, Android 16) opens in a window on this
+X desktop, scaled to fit the screen, with the app built and installed: the mouse is her finger.
+It needs Docker, /dev/kvm and an X display; it changes nothing on this machine. Its state lives in
+~/.local/share/odclcslkrpb5k-android/tablet, shared with the crossing game's tools/play.
+
 ## Configure
 
 Nothing reads the environment. Device: Samsung Galaxy Tab A11+ (Android 16, 1920×1200, landscape).

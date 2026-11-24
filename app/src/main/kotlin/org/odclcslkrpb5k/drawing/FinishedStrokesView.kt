@@ -5,34 +5,26 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffXfermode
-import android.util.Log
 import android.view.View
 import androidx.core.graphics.createBitmap
-import androidx.ink.geometry.Box
-import androidx.ink.rendering.android.canvas.CanvasStrokeRenderer
-import androidx.ink.strokes.Stroke
-import org.odclcslkrpb5k.drawing.adapters.InkStrokes
-import org.odclcslkrpb5k.drawing.core.Argb
-import org.odclcslkrpb5k.drawing.core.BrushKind
-import org.odclcslkrpb5k.drawing.core.Outcome
+import org.odclcslkrpb5k.drawing.core.Op
 import org.odclcslkrpb5k.drawing.core.Page
+import org.odclcslkrpb5k.drawing.core.StampData
 import org.odclcslkrpb5k.drawing.core.StrokeData
 
 /**
- * Draws the finished strokes, from the app's own model, into a page-sized bitmap, transparent where
- * nothing is drawn so a coloring page's fills show through. A new stroke is drawn into the bitmap
- * once; the whole page is redrawn only when the strokes are replaced (load, undo). Each frame only
- * copies the bitmap.
+ * What she drew and stamped, in the order she did it, in one page-sized bitmap: a stroke drawn
+ * after a stamp goes over it, and an eraser stroke rubs out strokes and stamps alike. Transparent
+ * where nothing is drawn, so a coloring page's fills and a photo show through. A new mark is drawn
+ * into the bitmap once; the whole page is redrawn only when the marks are replaced (load, undo).
+ * Each frame only copies the bitmap.
  */
 class FinishedStrokesView(context: Context) : View(context) {
-    private val renderer = CanvasStrokeRenderer.create()
+    private val marks = Marks()
+    private val art = StampArt(context)
     private val page = createBitmap(Page.WIDTH.toInt(), Page.HEIGHT.toInt())
     private val pageCanvas = Canvas(page)
-    private val identity = Matrix()
     private val scaled = Paint(Paint.FILTER_BITMAP_FLAG)
-    private val cutOut = Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OUT) }
 
     /** Page-to-view transform, set by the drawing surface from its size. */
     val pageToView = Matrix()
@@ -41,53 +33,35 @@ class FinishedStrokesView(context: Context) : View(context) {
         page.eraseColor(Color.TRANSPARENT)
     }
 
-    /** Draws one more stroke on top of the page. */
+    /** Draws one more stroke on top of the page (an eraser cuts instead). */
     fun add(data: StrokeData) {
-        draw(data)
+        marks.stroke(pageCanvas, data)
         invalidate()
     }
 
-    /** Replaces every stroke on the page and redraws it. */
-    fun show(strokes: List<StrokeData>) {
-        page.eraseColor(Color.TRANSPARENT)
-        strokes.forEach(::draw)
+    /** Draws one more stamp on top of the page. */
+    fun addStamp(stamp: StampData) {
+        art.draw(pageCanvas, stamp)
         invalidate()
-    }
-
-    /** Draws a stroke; an eraser stroke instead cuts its shape out of the strokes drawn so far. */
-    private fun draw(data: StrokeData) {
-        // The cut removes as much as the stroke is opaque, so an eraser is always cut opaque,
-        // whatever color it was drawn in while the finger was down.
-        val drawn =
-            if (data.brush.kind == BrushKind.ERASER) {
-                data.copy(brush = data.brush.copy(color = Argb(Color.BLACK)))
-            } else {
-                data
-            }
-        when (val stroke = InkStrokes.stroke(drawn)) {
-            is Outcome.Ok ->
-                if (data.brush.kind == BrushKind.ERASER) erase(stroke.value, data.brush.size)
-                else renderer.draw(pageCanvas, stroke.value, identity)
-            is Outcome.Err -> Log.w(TAG, "stroke not rendered: ${stroke.error}")
-        }
     }
 
     /**
-     * Cuts the eraser stroke's shape out of the strokes drawn so far. The layer covers only the
-     * stroke's box (padded by its width), not the page: undo replays every eraser stroke.
+     * Replaces the page with these operations' strokes and stamps, in order; with
+     * [withoutNewestStamp], a stamp that is the newest operation is left out (it is still selected,
+     * and the stamps view draws it on top until it is let go).
      */
-    private fun erase(stroke: Stroke, size: Float) {
-        val box: Box = stroke.shape.computeBoundingBox() ?: return
-        val layer =
-            pageCanvas.saveLayer(
-                box.xMin - size,
-                box.yMin - size,
-                box.xMax + size,
-                box.yMax + size,
-                cutOut,
-            )
-        renderer.draw(pageCanvas, stroke, identity)
-        pageCanvas.restoreToCount(layer)
+    fun show(ops: List<Op>, withoutNewestStamp: Boolean = false) {
+        page.eraseColor(Color.TRANSPARENT)
+        val drawn =
+            if (withoutNewestStamp && ops.lastOrNull() is Op.AddStamp) ops.dropLast(1) else ops
+        for (op in drawn) {
+            when (op) {
+                is Op.AddStroke -> marks.stroke(pageCanvas, op.stroke)
+                is Op.AddStamp -> art.draw(pageCanvas, op.stamp)
+                is Op.Fill -> Unit
+            }
+        }
+        invalidate()
     }
 
     /** Draws the page, in page units, onto [canvas] (a thumbnail's). */
@@ -97,9 +71,5 @@ class FinishedStrokesView(context: Context) : View(context) {
 
     override fun onDraw(canvas: Canvas) {
         canvas.drawBitmap(page, pageToView, scaled)
-    }
-
-    private companion object {
-        const val TAG = "FinishedStrokes"
     }
 }

@@ -2,8 +2,8 @@
 # Brushes: the eraser takes away the stroke where it passes and nothing else of it; undo brings the
 # erased part back and redo takes it again; the thick pen is wider than the medium one; the
 # highlighter is see-through; choosing a color while erasing draws again, in that color. On a
-# coloring page the eraser takes strokes only: the fill and the line art under it stay, also after
-# reopening.
+# coloring page the eraser takes the strokes and the fill where it passes, never the line art; the
+# fill tool mends the erased fill; all of it holds after reopening.
 set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 adb shell am start -W -n $pkg/.MainActivity >/dev/null
@@ -98,8 +98,16 @@ sleep 1
 adb shell "$(stroke 888 550 888 1050)"
 sleep 1
 capture brushes-coloring-erased
+colored 888 684 255 255 255 || { echo "scenario: the eraser left the fill (or the stroke) where it passed"; failed=1; }
+colored 940 600 $PURPLE || { echo "scenario: the eraser took the fill away from its path"; failed=1; }
+# The fill tool mends the erased fill, in the color chosen now (red, chosen for the stroke).
+tap $FILL_BUTTON
+sleep 1
+tap 888 684
+sleep 1
+capture brushes-coloring-mended
 check_coloring() {
-  colored 888 684 $PURPLE || { echo "scenario: $1: the eraser took the fill"; failed=1; }
+  colored 888 684 229 57 53 || { echo "scenario: $1: the fill was not mended"; failed=1; }
   colored 760 684 229 57 53 || { echo "scenario: $1: the eraser took the stroke away from its path"; failed=1; }
   inked 888 1010 || { echo "scenario: $1: the eraser took the line art"; failed=1; }
 }
@@ -112,4 +120,4 @@ capture brushes-coloring-reopened
 check_coloring "reopened"
 no_errors
 [ "$failed" -eq 0 ] || exit 1
-echo "scenario brushes: erased, unerased, re-erased, thick, see-through, red; fill and lines kept"
+echo "scenario brushes: erased, unerased, re-erased, thick, see-through, red; fill erased and mended, lines kept"

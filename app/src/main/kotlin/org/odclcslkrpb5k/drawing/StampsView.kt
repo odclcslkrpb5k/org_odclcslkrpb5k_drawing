@@ -5,7 +5,6 @@ import android.graphics.Canvas
 import android.graphics.DashPathEffect
 import android.graphics.Matrix
 import android.graphics.Paint
-import android.graphics.drawable.Drawable
 import android.view.View
 import androidx.core.graphics.withMatrix
 import kotlin.math.hypot
@@ -37,14 +36,13 @@ fun stampDrawable(stamp: Stamp): Int =
 val STAMP_DRAWABLES: Map<Stamp, Int> = Stamp.entries.associateWith(::stampDrawable)
 
 /**
- * The stamps, above every stroke. They are drawn from their page position and size, never from
- * pixels, so they stay sharp at any size. The newest stamp may be selected: it is outlined, and
- * while a finger moves it, [preview] stands in for it until the move is committed.
+ * The stamp still selected, above everything: the newest stamp, just placed, outlined while it can
+ * be moved or sized, and [preview] standing in for it while a finger moves it. Every other stamp is
+ * drawn in turn with the strokes (FinishedStrokesView), so later strokes cover it and the eraser
+ * takes it; the surface hands the selected one over there when it is let go ([onReleased]).
  */
 class StampsView(context: Context) : View(context) {
-    private val drawables: Map<Stamp, Drawable> = STAMP_DRAWABLES.mapValues { (_, id) ->
-        checkNotNull(context.getDrawable(id)) { "stamp drawable" }
-    }
+    private val art = StampArt(context)
     private val ring =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
@@ -62,11 +60,16 @@ class StampsView(context: Context) : View(context) {
             invalidate()
         }
 
+    /** Called when the selected stamp is let go: it now belongs with the strokes. */
+    var onReleased: () -> Unit = {}
+
     /** Whether the newest stamp is selected (it can still be moved and sized). */
     var stampSelected = false
         set(value) {
+            val released = field && !value
             field = value
             invalidate()
+            if (released) onReleased()
         }
 
     /** Stands in for the selected stamp while a finger moves it. */
@@ -88,20 +91,10 @@ class StampsView(context: Context) : View(context) {
         return stampSelected && hypot(x - s.x, y - s.y) <= s.size * HIT_SLOP / 2
     }
 
-    /** Draws the stamps in page units onto [canvas] (the view, or a thumbnail). */
+    /** Draws the selected stamp, if any, in page units onto [canvas] (the view, or a thumbnail). */
     fun drawOnPage(canvas: Canvas) {
-        for (s in current()) {
-            val half = (s.size / 2).toInt()
-            drawables.getValue(s.stamp).run {
-                setBounds(
-                    s.x.toInt() - half,
-                    s.y.toInt() - half,
-                    s.x.toInt() + half,
-                    s.y.toInt() + half,
-                )
-                draw(canvas)
-            }
-        }
+        val s = current().lastOrNull()
+        if (stampSelected && s != null) art.draw(canvas, s)
     }
 
     override fun onDraw(canvas: Canvas) {

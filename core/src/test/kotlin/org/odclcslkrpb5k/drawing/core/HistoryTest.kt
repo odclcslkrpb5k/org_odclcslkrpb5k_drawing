@@ -3,6 +3,8 @@ package org.odclcslkrpb5k.drawing.core
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.property.Arb
+import io.kotest.property.arbitrary.int
 import io.kotest.property.checkAll
 
 class HistoryTest :
@@ -49,6 +51,24 @@ class HistoryTest :
                 strokeSince.moveStamp(placed, moved) shouldBe strokeSince
                 val undoneSince = page.apply(Op.AddStamp(placed)).undo()
                 undoneSince.moveStamp(placed, moved) shouldBe undoneSince
+            }
+        }
+
+        "a fill shows whole until an eraser stroke, and filling it again mends it" {
+            checkAll(arbHistory(), arbStroke(OLDER_BRUSHES), Arb.int(1, 50), Arb.int()) {
+                page,
+                s,
+                r,
+                c ->
+                val filled = History(page.done, template = "star").apply(Op.Fill(r, Argb(c)))
+                filled.showsFill(r, Argb(c)) shouldBe true
+                filled.showsFill(r, Argb(c xor 1)) shouldBe false
+                // A stroke that is not an eraser leaves the fill whole.
+                filled.apply(Op.AddStroke(s)).showsFill(r, Argb(c)) shouldBe true
+                val eraser = s.copy(brush = s.brush.copy(kind = BrushKind.ERASER))
+                val erased = filled.apply(Op.AddStroke(eraser))
+                erased.showsFill(r, Argb(c)) shouldBe false
+                erased.apply(Op.Fill(r, Argb(c))).showsFill(r, Argb(c)) shouldBe true
             }
         }
 
